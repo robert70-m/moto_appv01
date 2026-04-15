@@ -230,17 +230,44 @@ def actualizar_ubicacion():
 
     return "OK"
 # ------------------------------------------------
+from datetime import datetime, timedelta
 
 @app.route("/admin")
 def admin():
     MI_NUMERO_ADMIN = '9513928223'
-
     telefono = str(session.get("telefono", "")).strip()
 
     if telefono != MI_NUMERO_ADMIN:
-        return f"Acceso denegado. Tu teléfono es: [{telefono}]", 403
+        return "Acceso denegado ❌", 403
 
-    return "Bienvenido admin"
+    conn = get_db()
+    conductores = conn.execute("SELECT * FROM usuarios WHERE tipo='conductor'").fetchall()
+
+    lista = []
+    ahora = datetime.now()
+
+    for c in conductores:
+        c_dict = dict(c)
+
+        dias_restantes = "Sin pago"
+
+        if c["fecha_pago"]:
+            fecha_pago = datetime.strptime(c["fecha_pago"], "%Y-%m-%d")
+            vencimiento = fecha_pago + timedelta(days=7)
+            diferencia = (vencimiento - ahora).days
+
+            if diferencia < 0:
+                dias_restantes = "Vencido"
+            else:
+                dias_restantes = diferencia
+
+        c_dict["dias_restantes"] = dias_restantes
+        lista.append(c_dict)
+
+    conn.close()
+
+    return render_template("admin.html", conductores=lista)
+
 
 # -------------------------------------------------
 @app.route("/logout")
