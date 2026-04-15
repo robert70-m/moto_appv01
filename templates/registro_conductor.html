@@ -1,0 +1,17 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="card">
+    <h2>Registrar Conductor 🏍️</h2>
+
+    <form method="POST">
+        <input type="text" name="nombre" placeholder="Nombre" required>
+        <input type="text" name="telefono" placeholder="Teléfono" required>
+        <input type="password" name="password" placeholder="Contraseña" required>
+
+        <button type="submit" style="background:#27ae60; color:white; padding:10px; width:100%;">
+            Registrar
+        </button>
+    </form>
+</div>
+{% endblock %}
