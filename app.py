@@ -147,7 +147,25 @@ def pedir_viaje():
     return redirect(url_for("cliente"))
 
 # ---------------------- CONDUCTOR ----------------------
+@app.route("/registro_conductor", methods=["GET", "POST"])
+def registro_conductor():
+    if request.method == "POST":
+        nombre = request.form["nombre"]
+        telefono = request.form["telefono"]
+        password = request.form["password"]
 
+        conn = get_db()
+
+        conn.execute(
+            "INSERT INTO usuarios (nombre, telefono, password, tipo) VALUES (?, ?, ?, 'conductor')",
+            (nombre, telefono, password)
+        )
+        conn.commit()
+        conn.close()
+
+        return redirect("/admin")
+
+    return render_template("registro_conductor.html")
 @app.route("/conductor")
 def conductor():
     if session.get("tipo") != "conductor":
@@ -162,7 +180,12 @@ def conductor():
 
     conn.close()
 
-    return render_template("conductor.html", viaje=viaje)
+    # 🔥 SI TIENE VIAJE
+    if viaje:
+        return render_template("conductor.html", viaje=viaje)
+
+    # 🔥 SI NO TIENE → VER DISPONIBLES
+    return redirect(url_for("viajes_disponibles"))
 
 @app.route("/viajes_disponibles")
 def viajes_disponibles():
@@ -276,6 +299,26 @@ def logout():
     return redirect(url_for("login"))
 
 # ----------------------
+@app.route("/aceptar_viaje_ajax/<int:id>", methods=["POST"])
+def aceptar_viaje_ajax(id):
+    if session.get("tipo") != "conductor":
+        return jsonify({"ok": False})
+
+    conn = get_db()
+
+    conn.execute("""
+        UPDATE viajes
+        SET conductor_id=?, estado='aceptado'
+        WHERE id=? AND estado='pendiente'
+    """, (session["user_id"], id))
+
+    conn.commit()
+    conn.close()
+
+    return jsonify({"ok": True})
+
+
+
 
 if __name__ == "__main__":
     app.run(debug=True)
