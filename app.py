@@ -61,8 +61,8 @@ def login():
     error = None
 
     if request.method == "POST":
-        telefono = request.form["telefono"]
-        password = request.form["password"]
+        telefono = request.form["telefono"].strip()
+        password = request.form["password"].strip()
 
         conn = get_db()
         user = conn.execute(
@@ -74,6 +74,8 @@ def login():
         if user:
             session["user_id"] = user["id"]
             session["tipo"] = user["tipo"]
+            session["nombre"] = user["nombre"]
+            session["telefono"] = user["telefono"]  # 🔥 CLAVE PARA ADMIN
 
             if user["tipo"] == "cliente":
                 return redirect(url_for("cliente"))
@@ -83,7 +85,6 @@ def login():
             error = "Datos incorrectos"
 
     return render_template("login.html", error=error)
-
 # ---------------------- REGISTRO ----------------------
 
 @app.route("/registro", methods=["GET", "POST"])
@@ -228,9 +229,11 @@ def actualizar_ubicacion():
     conn.close()
 
     return "OK"
+@app.route("/admin")
+def admin():
+    telefono = str(session.get("telefono", "")).strip()
 
-# ---------------------- LOGOUT ----------------------
-
+    return f"Tu teléfono en sesión es: [{telefono}]"
 @app.route("/logout")
 def logout():
     session.clear()
