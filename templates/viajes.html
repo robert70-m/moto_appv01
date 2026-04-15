@@ -1,0 +1,139 @@
+{% extends "base.html" %}
+
+{% block content %}
+<link rel="stylesheet" href="https://unpkg.com/leaflet-routing-machine@latest/dist/leaflet-routing-machine.css" />
+<script src="https://unpkg.com/leaflet-routing-machine@latest/dist/leaflet-routing-machine.js"></script>
+
+<div class="card">
+    <h2 style="text-align: center;">Panel del Conductor 🏍️</h2>
+
+    <div id="info_viaje_activo" style="display:none; background:#e8f5e9; border:2px solid #2e7d32; padding:15px; border-radius:10px; margin-bottom:15px;">
+        <h3 style="margin:0; color:#1b5e20;">🚀 Viaje en curso</h3>
+        <p id="datos_destino" style="margin:5px 0; font-weight:bold;"></p>
+        <button onclick="finalizarViaje()" style="background:#c62828; color:white; width:100%; padding:10px; margin-top:5px;">Finalizar Viaje ✅</button>
+    </div>
+
+    <div id="contenedorPrincipal" style="display:flex; flex-direction:column; gap:20px; margin-top:20px;">
+        <div id="lista_viajes" style="flex:1; max-height:450px; overflow-y:auto; padding:5px;">
+            <p style="text-align:center;">🔍 Buscando viajes...</p>
+        </div>
+
+        <div style="flex:2; position:relative;">
+            <div id="map" style="height:400px; width:100%; border-radius:10px; border: 2px solid #2c3e50;"></div>
+            <button id="expandirMapa" style="position:absolute; top:10px; right:10px; z-index:1000; background:white; padding:8px; border-radius:5px; cursor:pointer; font-weight:bold; border:1px solid #ccc;">🔍 Expandir</button>
+        </div>
+    </div>
+</div>
+
+<style>
+    /* Ocultamos el cuadro de texto de Leaflet Routing Machine para que no estorbe en el mapa */
+    .leaflet-routing-container { display: none !important; }
+    @media (min-width: 768px) { #contenedorPrincipal { flex-direction: row; } }
+    .card button { cursor: pointer; border-radius: 8px; border: none; font-weight: bold; transition: 0.3s; }
+    .card button:hover { opacity: 0.8; }
+</style>
+
+<script>
+var map, markerUsuario, routingControl;
+var viajeActivoId = null; 
+
+// 1. CARGAR VIAJES Y CHECAR ESTADO
+function cargarViajes() {
+    fetch("/api_viajes")
+        .then(res => res.json())
+        .then(data => {
+            // Si el backend nos dice que ya tenemos un viaje aceptado
+            const activo = data.viajes.find(v => v.estado === 'aceptado' || v.estado === 'en_camino');
+            
+            if (activo) {
+                mostrarModoViaje(activo);
+            } else {
+                mostrarListaPendientes(data.viajes);
+            }
+        });
+}
+
+function mostrarModoViaje(viaje) {
+    viajeActivoId = viaje.id;
+    document.getElementById("lista_viajes").style.display = "none";
+    document.getElementById("info_viaje_activo").style.display = "block";
+    document.getElementById("datos_destino").innerText = "Destino: " + viaje.destino;
+    
+    // Dibujar ruta permanentemente
+    dibujarRuta(viaje.lat, viaje.lng, viaje.lat_destino, viaje.lng_destino);
+}
+
+function mostrarListaPendientes(viajes) {
+    viajeActivoId = null;
+    document.getElementById("lista_viajes").style.display = "block";
+    document.getElementById("info_viaje_activo").style.display = "none";
+    
+    let html = "";
+    viajes.forEach((v) => {
+        if (v.estado === 'pendiente') {
+            html += `
+            <div class="card" style="border:1px solid #ddd; padding:10px; margin-bottom:10px;">
+                <p style="font-size:13px; margin:0;"><b>📍 Origen:</b> ${v.origen}</p>
+                <p style="font-size:13px; margin:5px 0;"><b>🏁 Destino:</b> ${v.destino}</p>
+                <button onclick="dibujarRuta(${v.lat}, ${v.lng}, ${v.lat_destino}, ${v.lng_destino})" style="background:#3498db; color:white; width:100%; padding:8px; margin-bottom:5px;">Ver Ruta</button>
+                <a href="/aceptar_viaje/${v.id}"><button style="background:#27ae60; color:white; width:100%; padding:8px;">Aceptar</button></a>
+            </div>`;
+        }
+    });
+    document.getElementById("lista_viajes").innerHTML = html || "<p style='text-align:center;'>No hay viajes nuevos.</p>";
+}
+
+// 2. DIBUJAR RUTA (Mantiene la ruta fija)
+function dibujarRuta(latO, lngO, latD, lngD) {
+    if (routingControl) { map.removeControl(routingControl); }
+
+    routingControl = L.Routing.control({
+        waypoints: [L.latLng(latO, lngO), L.latLng(latD, lngD)],
+        lineOptions: { styles: [{ color: '#2980b9', opacity: 0.8, weight: 6 }] },
+        addWaypoints: false,
+        draggableWaypoints: false,
+        show: false,
+        createMarker: function() { return null; } // No duplica marcadores
+    }).addTo(map);
+}
+
+function finalizarViaje() {
+    if(!viajeActivoId) return;
+    window.location.href = `/finalizar_viaje/${viajeActivoId}`;
+}
+
+// 3. INICIO
+document.addEventListener("DOMContentLoaded", function() {
+    // Coordenadas iniciales (puedes ajustarlas a tu ciudad)
+    map = L.map('map').setView([16.75, -96.67], 13);
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
+
+    // GPS EN TIEMPO REAL
+    if (navigator.geolocation) {
+        navigator.geolocation.watchPosition(pos => {
+            const { latitude: lat, longitude: lng } = pos.coords;
+            if (!markerUsuario) {
+                const motoIcon = L.divIcon({ html: '🏍️', className: 'moto-icon', iconSize: [30, 30] });
+                markerUsuario = L.marker([lat, lng], {icon: motoIcon}).addTo(map);
+            } else {
+                markerUsuario.setLatLng([lat, lng]);
+            }
+
+            // Enviamos ubicación al servidor
+            let fd = new FormData();
+            fd.append('lat', lat); fd.append('lng', lng);
+            fetch('/actualizar_ubicacion', { method: 'POST', body: fd });
+        }, null, { enableHighAccuracy: true });
+    }
+
+    document.getElementById("expandirMapa").onclick = () => {
+        let m = document.getElementById("map");
+        m.style.height = m.style.height === "400px" ? "80vh" : "400px";
+        setTimeout(() => map.invalidateSize(), 300);
+    };
+
+    cargarViajes();
+    setInterval(cargarViajes, 8000); 
+});
+</script>
+{% endblock %}

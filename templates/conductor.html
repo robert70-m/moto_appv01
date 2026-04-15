@@ -1,0 +1,130 @@
+{% extends "base.html" %}
+
+{% block content %}
+<audio id="sonidoNotificacion" src="{{ url_for('static', filename='alerta.mp3') }}" preload="auto"></audio>
+
+<div class="card" style="text-align: center;">
+    <h2>Panel del Conductor 🏍️</h2>
+    <p style="color: #7f8c8d;">Estado actual: <strong id="status-text">En línea 🟢</strong></p>
+    
+    <a href="/viajes_disponibles">
+        <button style="background: #3498db; width: 100%; padding: 12px; border: none; color: white; border-radius: 5px;">
+            🔎 Ver viajes disponibles
+        </button>
+    </a>
+</div>
+
+<div id="alerta-viaje" class="alerta-viaje" style="display:none;" onclick="detenerAlerta()">
+    🚨 NUEVO VIAJE DISPONIBLE 🚨 <br> <small>(Toca aquí para silenciar)</small>
+</div>
+
+<div class="card">
+    <h3 style="text-align: center;">Control de Viaje Activo</h3>
+    <div style="display: flex; flex-direction: column; gap: 12px;">
+        <button id="btn_camino" onclick="actualizarEstado('en_camino', '{{ viaje_id }}')" 
+                style="background:#f39c12; color:white; padding:18px; border:none; border-radius:8px; font-weight:bold;">
+            En Camino al Cliente
+        </button>
+        
+        <button id="btn_recogido" onclick="actualizarEstado('recogido', '{{ viaje_id }}')" 
+                style="background:#9b59b6; color:white; padding:18px; border:none; border-radius:8px; font-weight:bold;" disabled>
+            Cliente Recogido
+        </button>
+        
+        <button id="btn_finalizado" onclick="actualizarEstado('finalizado', '{{ viaje_id }}')" 
+                style="background:#e74c3c; color:white; padding:18px; border:none; border-radius:8px; font-weight:bold;" disabled>
+            Finalizar Viaje
+        </button>
+    </div>
+</div>
+
+<style>
+.alerta-viaje {
+    position: fixed; top: 0; left: 0; width: 100%; background: #e74c3c; color: white;
+    text-align: center; padding: 25px; font-size: 20px; font-weight: bold; z-index: 9999;
+    animation: parpadeo 1s infinite; cursor: pointer;
+}
+@keyframes parpadeo { 0% { opacity: 1; } 50% { opacity: 0.7; } 100% { opacity: 1; } }
+button:disabled { background: #bdc3c7 !important; cursor: not-allowed; opacity: 0.6; }
+</style>
+
+<script>
+// --- 1. LÓGICA DE ESTADOS ---
+function actualizarEstado(nuevoEstado, viajeId) {
+    if (!viajeId || viajeId === "None" || viajeId === "") {
+        alert("No tienes un viaje activo en este momento.");
+        return;
+    }
+
+    fetch(`/estado/${viajeId}/${nuevoEstado}`)
+        .then(response => {
+            if (response.ok) {
+                if (nuevoEstado === 'en_camino') {
+                    document.getElementById("btn_camino").disabled = true;
+                    document.getElementById("btn_recogido").disabled = false;
+                }
+                if (nuevoEstado === 'recogido') {
+                    document.getElementById("btn_recogido").disabled = true;
+                    document.getElementById("btn_finalizado").disabled = false;
+                }
+                if (nuevoEstado === 'finalizado') {
+                    alert("¡Viaje finalizado! Buen trabajo.");
+                    window.location.href = "/viajes_disponibles";
+                }
+            }
+        });
+}
+
+// --- 2. RASTREO GPS OPTIMIZADO ---
+if (navigator.geolocation) {
+    navigator.geolocation.watchPosition(function(pos) {
+        const lat = pos.coords.latitude;
+        const lng = pos.coords.longitude;
+
+        let formData = new FormData();
+        formData.append("lat", lat);
+        formData.append("lng", lng);
+
+        fetch("/actualizar_ubicacion", {
+            method: "POST",
+            body: formData
+        }).catch(err => console.log("Error de conexión GPS"));
+
+    }, null, { enableHighAccuracy: true, maximumAge: 3000 });
+}
+
+// --- 3. ALERTAS DE NUEVO VIAJE ---
+let alertaActiva = false;
+let intervaloSonido;
+
+function iniciarAlerta() {
+    if (alertaActiva) return;
+    alertaActiva = true;
+    document.getElementById("alerta-viaje").style.display = "block";
+    
+    const sonido = document.getElementById("sonidoNotificacion");
+    intervaloSonido = setInterval(() => {
+        sonido.play().catch(e => console.log("Esperando interacción del usuario para sonido"));
+    }, 2000);
+
+    if (navigator.vibrate) navigator.vibrate([500, 200, 500]);
+}
+
+function detenerAlerta() {
+    alertaActiva = false;
+    document.getElementById("alerta-viaje").style.display = "none";
+    clearInterval(intervaloSonido);
+}
+
+// Verificar nuevos viajes cada 5 segundos
+setInterval(() => {
+    // Solo verificar si NO estamos ya en un viaje
+    const tieneViaje = "{{ viaje_id }}";
+    if (!tieneViaje || tieneViaje === "None") {
+        fetch("/verificar_viajes")
+            .then(res => res.json())
+            .then(data => { if (data.nuevo_viaje) iniciarAlerta(); });
+    }
+}, 5000);
+</script>
+{% endblock %}
