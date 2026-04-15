@@ -87,21 +87,42 @@ def login():
             error = "Usuario o contraseña incorrectos ❌"
 
     return render_template("login.html", error=error)
-
 @app.route("/registro", methods=["GET", "POST"])
 def registro():
     if request.method == "POST":
-        nombre = request.form["nombre"].strip()
-        telefono = request.form["telefono"].strip()
-        password = request.form["password"].strip()
-        tipo = request.form["tipo"].strip()
+        # Usamos .get() para evitar errores si falta un campo
+        nombre = request.form.get("nombre", "").strip()
+        telefono = request.form.get("telefono", "").strip()
+        password = request.form.get("password", "").strip()
+        tipo = request.form.get("tipo", "cliente").strip() # Por defecto es cliente
 
-        conn = get_db()
-        conn.execute("INSERT INTO usuarios (nombre, telefono, password, tipo, activo) VALUES (?, ?, ?, ?, 1)", 
-                     (nombre, telefono, password, tipo))
-        conn.commit()
-        conn.close()
-        return redirect("/")
+        # Verificamos que no vengan vacíos
+        if not nombre or not telefono or not password:
+            return redirect("/registro?error=Todos los campos son obligatorios")
+
+        try:
+            conn = get_db()
+            # Verificamos si el usuario ya existe para dar un mensaje claro
+            user_exists = conn.execute("SELECT id FROM usuarios WHERE telefono = ?", (telefono,)).fetchone()
+            
+            if user_exists:
+                conn.close()
+                return redirect("/registro?error=El teléfono ya está registrado")
+
+            conn.execute(
+                "INSERT INTO usuarios (nombre, telefono, password, tipo, activo) VALUES (?, ?, ?, ?, 1)", 
+                (nombre, telefono, password, tipo)
+            )
+            conn.commit()
+            conn.close()
+            
+            # Redirigir al login después de un registro exitoso
+            return redirect("/login?msg=Cuenta creada con éxito")
+            
+        except Exception as e:
+            print(f"Error en registro: {e}")
+            return redirect("/registro?error=Error interno del servidor")
+
     return render_template("registro.html")
 
 # ---------------------- VISTAS CONDUCTOR ----------------------
