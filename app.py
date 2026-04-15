@@ -229,11 +229,20 @@ def actualizar_ubicacion():
     conn.close()
 
     return "OK"
+# ------------------------------------------------
+
 @app.route("/admin")
 def admin():
+    MI_NUMERO_ADMIN = '9513928223'
+
     telefono = str(session.get("telefono", "")).strip()
 
-    return f"Tu teléfono en sesión es: [{telefono}]"
+    if telefono != MI_NUMERO_ADMIN:
+        return f"Acceso denegado. Tu teléfono es: [{telefono}]", 403
+
+    return "Bienvenido admin"
+
+# -------------------------------------------------
 @app.route("/logout")
 def logout():
     session.clear()
