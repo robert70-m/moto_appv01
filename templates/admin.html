@@ -54,12 +54,14 @@
                     </td>
                     <td style="display: flex; gap: 5px; justify-content: center;">
                         {% if c.activo == 1 %}
-                            <a class="btn-bloquear" href="{{ url_for('toggle_conductor', id=c.id) }}"
+                            <a class="btn-bloquear" 
+<a class="btn-bloquear" href="{{ url_for('toggle_conductor', id=c.id) }}">
                                onclick="return confirm('¿Bloquear a {{ c.nombre }}?')">
                                 <i class="fas fa-user-slash"></i>
                             </a>
                         {% else %}
-                            <a class="btn-activar" href="{{ url_for('toggle_conductor', id=c.id) }}"
+                            <a class="btn-activar" 
+href="#"
                                onclick="return confirm('¿Activar a {{ c.nombre }}?')">
                                 <i class="fas fa-user-check"></i>
                             </a>
