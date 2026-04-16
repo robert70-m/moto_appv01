@@ -336,6 +336,7 @@ def aceptar_viaje_ajax(id):
     conn.close()
 
     return jsonify({"ok": True})
+
 @app.route("/toggle_conductor/<int:id>")
 def toggle_conductor(id):
     if "user_id" not in session:
@@ -355,6 +356,7 @@ def toggle_conductor(id):
     ).fetchone()
 
     if usuario:
+        # 🔥 ESTO ES LO IMPORTANTE
         nuevo_estado = 0 if usuario["activo"] == 1 else 1
 
         conn.execute(
@@ -366,6 +368,9 @@ def toggle_conductor(id):
     conn.close()
 
     return redirect(url_for("admin"))
+
+
+
 @app.route("/pagar_conductor/<int:id>")
 def pagar_conductor(id):
     if "user_id" not in session:
