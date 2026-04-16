@@ -2,20 +2,25 @@
 
 {% block content %}
 <div class="card" style="max-width: 1000px; width: 100%; margin: auto;">
-    <h2 style="text-align: center;"><i class="fas fa-users-cog"></i> Gestión de Conductores</h2>
+    <h2 style="text-align: center;">
+        <i class="fas fa-users-cog"></i> Gestión de Conductores
+    </h2>
     
     <div style="margin-bottom: 20px;">
-        <input type="text" id="buscador" placeholder="🔍 Buscar por nombre o teléfono..." 
-               onkeyup="filtrarTabla()" style="padding: 10px; width: 100%;">
+        <input type="text" id="buscador"
+               placeholder="🔍 Buscar por nombre o teléfono..."
+               onkeyup="filtrarTabla()"
+               style="padding: 10px; width: 100%;">
     </div>
 
     <div style="overflow-x: auto;">
-    <div style="text-align: right; margin-bottom: 20px;">
-    <a href="/registro_conductor" class="btn-pago" style="background: #27ae60; padding: 10px 20px;">
-        <i class="fas fa-plus"></i> Registrar Nuevo Conductor
-    </a>
-</div>
 
+        <div style="text-align: right; margin-bottom: 20px;">
+            <a href="/registro_conductor" class="btn-pago"
+               style="background: #27ae60; padding: 10px 20px;">
+                <i class="fas fa-plus"></i> Registrar Nuevo Conductor
+            </a>
+        </div>
 
         <table id="tablaConductores">
             <thead>
@@ -28,49 +33,65 @@
                     <th>Acciones</th>
                 </tr>
             </thead>
+
             <tbody>
                 {% for c in conductores %}
                 <tr style="border-bottom: 1px solid #eee;">
                     <td style="padding: 12px;"><b>{{ c.nombre }}</b></td>
                     <td>{{ c.telefono }}</td>
+
                     <td>
                         {% if c.activo == 1 or c.activo == "1" %}
-                            <span class="activo"><i class="fas fa-check"></i> Activo</span>
+                            <span class="activo">
+                                <i class="fas fa-check"></i> Activo
+                            </span>
                         {% else %}
-                            <span class="bloqueado"><i class="fas fa-ban"></i> Bloqueado</span>
+                            <span class="bloqueado">
+                                <i class="fas fa-ban"></i> Bloqueado
+                            </span>
                         {% endif %}
                     </td>
+
                     <td>
                         <small>{{ c.fecha_pago if c.fecha_pago else "Sin registro" }}</small>
                     </td>
+
                     <td>
                         {% if c.dias_restantes == "Vencido" %}
                             <span style="color:var(--danger); font-weight:bold;">Vencido</span>
                         {% elif c.dias_restantes == "Sin pago" %}
                             <span style="color:gray;">Sin pago</span>
                         {% else %}
-                            <span style="color:var(--accent); font-weight:bold;">{{ c.dias_restantes }} días</span>
+                            <span style="color:var(--accent); font-weight:bold;">
+                                {{ c.dias_restantes }} días
+                            </span>
                         {% endif %}
                     </td>
-                    <td style="display: flex; gap: 5px; justify-content: center;">
-                        {% if c.activo == 1 %}
-                            <a class="btn-bloquear" 
-<a class="btn-bloquear" href="{{ url_for('toggle_conductor', id=c.id) }}" onclick="return confirm('¿Bloquear a {{ c.nombre }}?')">
-    <i class="fas fa-user-slash"></i>
-</a>
 
+                    <td style="display: flex; gap: 5px; justify-content: center;">
+
+                        {% if c.activo == 1 or c.activo == "1" %}
+                            <a class="btn-bloquear"
+                               href="{{ url_for('toggle_conductor', id=c.id) }}"
+                               onclick="return confirm('Bloquear a {{ c.nombre }}?');">
+                                <i class="fas fa-user-slash"></i>
+                            </a>
                         {% else %}
-                            <a class="btn-activar" 
-<a class="btn-activar" href="{{ url_for('toggle_conductor', id=c.id) }}" onclick="return confirm('¿Activar a {{ c.nombre }}?')">
-                               onclick="return confirm('¿Activar a {{ c.nombre }}?')">
+                            <a class="btn-activar"
+                               href="{{ url_for('toggle_conductor', id=c.id) }}"
+                               onclick="return confirm('Activar a {{ c.nombre }}?');">
                                 <i class="fas fa-user-check"></i>
                             </a>
                         {% endif %}
-                        <a class="btn-pago" href="{{ url_for('pagar_conductor', id=c.id) }}" onclick="return confirm('¿Confirmar pago de {{ c.nombre }}?')">
-    <i class="fas fa-dollar-sign"></i>
-</a>
-                        
+
+                        <a class="btn-pago"
+                           href="{{ url_for('pagar_conductor', id=c.id) }}"
+                           onclick="return confirm('Confirmar pago de {{ c.nombre }}?');">
+                            <i class="fas fa-dollar-sign"></i>
+                        </a>
+
                     </td>
+
                 </tr>
                 {% endfor %}
             </tbody>
@@ -78,12 +99,13 @@
     </div>
 
     {% if conductores|length == 0 %}
-        <p style="text-align:center; padding: 20px; color: #7f8c8d;">No hay conductores registrados.</p>
+        <p style="text-align:center; padding: 20px; color: #7f8c8d;">
+            No hay conductores registrados.
+        </p>
     {% endif %}
 </div>
 
 <script>
-// Sugerencia 2: Filtro de búsqueda en tiempo real
 function filtrarTabla() {
     let input = document.getElementById("buscador");
     let filter = input.value.toLowerCase();
@@ -93,6 +115,7 @@ function filtrarTabla() {
     for (let i = 1; i < tr.length; i++) {
         let tdNombre = tr[i].getElementsByTagName("td")[0];
         let tdTel = tr[i].getElementsByTagName("td")[1];
+
         if (tdNombre || tdTel) {
             let texto = (tdNombre.textContent + tdTel.textContent).toLowerCase();
             tr[i].style.display = texto.indexOf(filter) > -1 ? "" : "none";
@@ -102,15 +125,31 @@ function filtrarTabla() {
 </script>
 
 <style>
-    table { width: 100%; border-collapse: collapse; margin-top: 10px; font-size: 14px; }
-    th, td { text-align: center; border-bottom: 1px solid #eee; }
-    .btn-activar, .btn-bloquear, .btn-pago { 
-        padding: 8px 12px; border-radius: 5px; color: white; font-size: 12px;
-    }
-    .btn-activar { background: var(--accent); }
-    .btn-bloquear { background: var(--danger); }
-    .btn-pago { background: #3498db; }
-    .activo { color: var(--accent); }
-    .bloqueado { color: var(--danger); }
+table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 10px;
+    font-size: 14px;
+}
+
+th, td {
+    text-align: center;
+    border-bottom: 1px solid #eee;
+}
+
+.btn-activar, .btn-bloquear, .btn-pago {
+    padding: 8px 12px;
+    border-radius: 5px;
+    color: white;
+    font-size: 12px;
+}
+
+.btn-activar { background: var(--accent); }
+.btn-bloquear { background: var(--danger); }
+.btn-pago { background: #3498db; }
+
+.activo { color: var(--accent); }
+.bloqueado { color: var(--danger); }
 </style>
+
 {% endblock %}
