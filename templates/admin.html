@@ -55,11 +55,10 @@
                     <td style="display: flex; gap: 5px; justify-content: center;">
                         {% if c.activo == 1 %}
                             <a class="btn-bloquear" 
-
 <a class="btn-bloquear" href="{{ url_for('toggle_conductor', id=c.id) }}" onclick="return confirm('¿Bloquear a {{ c.nombre }}?')">
+    <i class="fas fa-user-slash"></i>
+</a>
 
-                                <i class="fas fa-user-slash"></i>
-                            </a>
                         {% else %}
                             <a class="btn-activar" 
 <a class="btn-activar" href="{{ url_for('toggle_conductor', id=c.id) }}" onclick="return confirm('¿Activar a {{ c.nombre }}?')">
@@ -67,11 +66,10 @@
                                 <i class="fas fa-user-check"></i>
                             </a>
                         {% endif %}
-
-                        <a class="btn-pago" href="{{ url_for('pagar_conductor', id=c.id) }}"
-                           title="Registrar pago" onclick="return confirm('¿Confirmar pago de {{ c.nombre }}?')">
-                            <i class="fas fa-dollar-sign"></i>
-                        </a>
+                        <a class="btn-pago" href="{{ url_for('pagar_conductor', id=c.id) }}" onclick="return confirm('¿Confirmar pago de {{ c.nombre }}?')">
+    <i class="fas fa-dollar-sign"></i>
+</a>
+                        
                     </td>
                 </tr>
                 {% endfor %}
