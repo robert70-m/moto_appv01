@@ -266,17 +266,23 @@ def actualizar_ubicacion():
     return "OK"
 
 # ---------------------- ADMIN ----------------------
-
 @app.route("/admin")
 def admin():
+    # 🔥 1. Verificar sesión
+    if "user_id" not in session:
+        return redirect(url_for("login"))
+
     MI_NUMERO_ADMIN = '9513928223'
     telefono = str(session.get("telefono", "")).strip()
 
+    # 🔥 2. Validar admin
     if telefono != MI_NUMERO_ADMIN:
         return "Acceso denegado ❌", 403
 
     conn = get_db()
-    conductores = conn.execute("SELECT * FROM usuarios WHERE tipo='conductor'").fetchall()
+    conductores = conn.execute(
+        "SELECT * FROM usuarios WHERE tipo='conductor'"
+    ).fetchall()
 
     lista = []
     ahora = datetime.now()
@@ -285,15 +291,19 @@ def admin():
         c_dict = dict(c)
         dias_restantes = "Sin pago"
 
+        # 🔥 3. PROTEGER FECHA (esto evita errores 500)
         if c["fecha_pago"]:
-            fecha_pago = datetime.strptime(c["fecha_pago"], "%Y-%m-%d")
-            vencimiento = fecha_pago + timedelta(days=7)
-            diferencia = (vencimiento - ahora).days
+            try:
+                fecha_pago = datetime.strptime(c["fecha_pago"], "%Y-%m-%d")
+                vencimiento = fecha_pago + timedelta(days=7)
+                diferencia = (vencimiento - ahora).days
 
-            if diferencia < 0:
-                dias_restantes = "Vencido"
-            else:
-                dias_restantes = diferencia
+                if diferencia < 0:
+                    dias_restantes = "Vencido"
+                else:
+                    dias_restantes = diferencia
+            except:
+                dias_restantes = "Error fecha"
 
         c_dict["dias_restantes"] = dias_restantes
         lista.append(c_dict)
@@ -326,6 +336,60 @@ def aceptar_viaje_ajax(id):
     conn.close()
 
     return jsonify({"ok": True})
+@app.route("/toggle_conductor/<int:id>")
+def toggle_conductor(id):
+    if "user_id" not in session:
+        return redirect(url_for("login"))
+
+    MI_NUMERO_ADMIN = '9513928223'
+    telefono = str(session.get("telefono", "")).strip()
+
+    if telefono != MI_NUMERO_ADMIN:
+        return "Acceso denegado ❌", 403
+
+    conn = get_db()
+
+    usuario = conn.execute(
+        "SELECT activo FROM usuarios WHERE id=?",
+        (id,)
+    ).fetchone()
+
+    if usuario:
+        nuevo_estado = 0 if usuario["activo"] == 1 else 1
+
+        conn.execute(
+            "UPDATE usuarios SET activo=? WHERE id=?",
+            (nuevo_estado, id)
+        )
+        conn.commit()
+
+    conn.close()
+
+    return redirect(url_for("admin"))
+@app.route("/pagar_conductor/<int:id>")
+def pagar_conductor(id):
+    if "user_id" not in session:
+        return redirect(url_for("login"))
+
+    MI_NUMERO_ADMIN = '9513928223'
+    telefono = str(session.get("telefono", "")).strip()
+
+    if telefono != MI_NUMERO_ADMIN:
+        return "Acceso denegado ❌", 403
+
+    conn = get_db()
+
+    # 🔥 Guardar fecha actual como pago
+    hoy = datetime.now().strftime("%Y-%m-%d")
+
+    conn.execute(
+        "UPDATE usuarios SET fecha_pago=? WHERE id=?",
+        (hoy, id)
+    )
+    conn.commit()
+    conn.close()
+
+    return redirect(url_for("admin"))
 
 if __name__ == "__main__":
     app.run()
