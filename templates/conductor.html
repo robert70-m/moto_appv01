@@ -8,7 +8,7 @@
     <p style="color: #7f8c8d;">Estado actual: <strong id="status-text">En línea 🟢</strong></p>
     
     <a href="/viajes_disponibles">
-        <button style="background: #3498db; width: 100%; padding: 12px; border: none; color: white; border-radius: 5px;">
+        <button style="background: #3498db; width: 100%; padding: 12px; border: none; color: white; border-radius: 5px; font-weight: bold; cursor: pointer;">
             🔎 Ver viajes disponibles
         </button>
     </a>
@@ -19,21 +19,33 @@
 </div>
 
 <div class="card">
-    <h3 style="text-align: center;">Control de Viaje Activo</h3>
+    <h3 style="text-align: center; margin-bottom: 15px;">Control de Viaje Activo</h3>
+    
+    {% if viaje %}
+    <div id="map_conductor" style="height: 350px; width: 100%; border-radius: 10px; margin-bottom: 20px; border: 2px solid #2c3e50;"></div>
+    {% else %}
+    <div style="text-align: center; padding: 20px; border: 1px dashed #ccc; border-radius: 10px; color: #7f8c8d;">
+        <p>No hay un viaje activo seleccionado.</p>
+    </div>
+    {% endif %}
+
     <div style="display: flex; flex-direction: column; gap: 12px;">
-        <button id="btn_camino" onclick="actualizarEstado('en_camino', '{{ viaje_id }}')" 
-                style="background:#f39c12; color:white; padding:18px; border:none; border-radius:8px; font-weight:bold;">
-            En Camino al Cliente
+        <button id="btn_camino" onclick="actualizarEstado('en_camino', '{{ viaje.id if viaje else '' }}')" 
+                style="background:#f39c12; color:white; padding:18px; border:none; border-radius:8px; font-weight:bold;"
+                {% if not viaje or viaje.estado != 'aceptado' %} disabled {% endif %}>
+            En Camino al Cliente 🛵
         </button>
         
-        <button id="btn_recogido" onclick="actualizarEstado('recogido', '{{ viaje_id }}')" 
-                style="background:#9b59b6; color:white; padding:18px; border:none; border-radius:8px; font-weight:bold;" disabled>
-            Cliente Recogido
+        <button id="btn_recogido" onclick="actualizarEstado('recogido', '{{ viaje.id if viaje else '' }}')" 
+                style="background:#9b59b6; color:white; padding:18px; border:none; border-radius:8px; font-weight:bold;"
+                {% if not viaje or viaje.estado != 'en_camino' %} disabled {% endif %}>
+            Cliente Recogido ✅
         </button>
         
-        <button id="btn_finalizado" onclick="actualizarEstado('finalizado', '{{ viaje_id }}')" 
-                style="background:#e74c3c; color:white; padding:18px; border:none; border-radius:8px; font-weight:bold;" disabled>
-            Finalizar Viaje
+        <button id="btn_finalizado" onclick="actualizarEstado('finalizado', '{{ viaje.id if viaje else '' }}')" 
+                style="background:#e74c3c; color:white; padding:18px; border:none; border-radius:8px; font-weight:bold;"
+                {% if not viaje or viaje.estado != 'recogido' %} disabled {% endif %}>
+            Finalizar Viaje 🏁
         </button>
     </div>
 </div>
@@ -49,33 +61,61 @@ button:disabled { background: #bdc3c7 !important; cursor: not-allowed; opacity: 
 </style>
 
 <script>
-// --- 1. LÓGICA DE ESTADOS ---
+// --- 1. LÓGICA DEL MAPA ---
+{% if viaje %}
+document.addEventListener("DOMContentLoaded", function() {
+    try {
+        var latO = {{ viaje.lat or 0 }};
+        var lngO = {{ viaje.lng or 0 }};
+        var latD = {{ viaje.lat_destino or 0 }};
+        var lngD = {{ viaje.lng_destino or 0 }};
+
+        if (latO === 0 || latD === 0) return;
+
+        var map = L.map('map_conductor').setView([latO, lngO], 15);
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            attribution: '© OpenStreetMap'
+        }).addTo(map);
+
+        L.marker([latO, lngO]).addTo(map).bindPopup("Recoger Cliente");
+        L.marker([latD, lngD]).addTo(map).bindPopup("Destino del Viaje");
+
+        var polyline = L.polyline([[latO, lngO], [latD, lngD]], {color: 'blue', weight: 6, opacity: 0.7}).addTo(map);
+        map.fitBounds(polyline.getBounds(), {padding: [30, 30]});
+    } catch (e) {
+        console.error("Error al cargar el mapa:", e);
+    }
+});
+{% endif %}
+
+// --- 2. ACTUALIZAR ESTADOS ---
 function actualizarEstado(nuevoEstado, viajeId) {
-    if (!viajeId || viajeId === "None" || viajeId === "") {
-        alert("No tienes un viaje activo en este momento.");
+    if (!viajeId || viajeId === "" || viajeId === "None") {
+        alert("Atención: No se encontró el ID del viaje activo.");
         return;
     }
 
-    fetch(`/estado/${viajeId}/${nuevoEstado}`)
+    // Llamada al endpoint de Python para cambiar el estado en SQLite
+    fetch(`/cambiar_estado_viaje/${viajeId}/${nuevoEstado}`)
         .then(response => {
             if (response.ok) {
-                if (nuevoEstado === 'en_camino') {
-                    document.getElementById("btn_camino").disabled = true;
-                    document.getElementById("btn_recogido").disabled = false;
-                }
-                if (nuevoEstado === 'recogido') {
-                    document.getElementById("btn_recogido").disabled = true;
-                    document.getElementById("btn_finalizado").disabled = false;
-                }
+                // Forzamos redirección según el nuevo estado
                 if (nuevoEstado === 'finalizado') {
-                    alert("¡Viaje finalizado! Buen trabajo.");
                     window.location.href = "/viajes_disponibles";
+                } else {
+                    window.location.href = "/conductor";
                 }
+            } else {
+                alert("Error en el servidor al intentar cambiar el estado.");
             }
+        })
+        .catch(err => {
+            console.error("Error de Fetch:", err);
+            alert("Error de conexión. Revisa que el servidor esté activo.");
         });
 }
 
-// --- 2. RASTREO GPS OPTIMIZADO ---
+// --- 3. RASTREO GPS ---
 if (navigator.geolocation) {
     navigator.geolocation.watchPosition(function(pos) {
         const lat = pos.coords.latitude;
@@ -88,12 +128,11 @@ if (navigator.geolocation) {
         fetch("/actualizar_ubicacion", {
             method: "POST",
             body: formData
-        }).catch(err => console.log("Error de conexión GPS"));
-
-    }, null, { enableHighAccuracy: true, maximumAge: 3000 });
+        }).catch(err => console.log("Error sincronizando GPS"));
+    }, null, { enableHighAccuracy: true });
 }
 
-// --- 3. ALERTAS DE NUEVO VIAJE ---
+// --- 4. ALERTAS DE NUEVO VIAJE ---
 let alertaActiva = false;
 let intervaloSonido;
 
@@ -104,10 +143,8 @@ function iniciarAlerta() {
     
     const sonido = document.getElementById("sonidoNotificacion");
     intervaloSonido = setInterval(() => {
-        sonido.play().catch(e => console.log("Esperando interacción del usuario para sonido"));
+        sonido.play().catch(e => console.log("Interacción requerida para audio"));
     }, 2000);
-
-    if (navigator.vibrate) navigator.vibrate([500, 200, 500]);
 }
 
 function detenerAlerta() {
@@ -116,15 +153,13 @@ function detenerAlerta() {
     clearInterval(intervaloSonido);
 }
 
-// Verificar nuevos viajes cada 5 segundos
 setInterval(() => {
-    // Solo verificar si NO estamos ya en un viaje
-    const tieneViaje = "{{ viaje_id }}";
-    if (!tieneViaje || tieneViaje === "None") {
-        fetch("/verificar_viajes")
-            .then(res => res.json())
-            .then(data => { if (data.nuevo_viaje) iniciarAlerta(); });
-    }
+    // Solo busca nuevos viajes si Juan no está ocupado en uno actualmente
+    {% if not viaje %}
+    fetch("/verificar_viajes")
+        .then(res => res.json())
+        .then(data => { if (data.nuevo_viaje) iniciarAlerta(); });
+    {% endif %}
 }, 5000);
 </script>
 {% endblock %}

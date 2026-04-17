@@ -119,14 +119,26 @@ def registro_conductor():
         conn.close()
         return redirect(url_for("admin"))
     return render_template("registro_conductor.html")
-
 @app.route("/conductor")
 def conductor():
-    if session.get("tipo") != "conductor": return redirect(url_for("login"))
+    if session.get("tipo") != "conductor":
+        return redirect(url_for("login"))
+
     conn = get_db()
-    viaje = conn.execute("SELECT * FROM viajes WHERE conductor_id=? AND estado!='finalizado'", (session["user_id"],)).fetchone()
+    # Buscamos el viaje donde Juan es el conductor y el viaje NO está finalizado
+    viaje = conn.execute("""
+        SELECT * FROM viajes 
+        WHERE conductor_id = ? 
+        AND estado IN ('aceptado', 'en_camino', 'recogido')
+        ORDER BY id DESC LIMIT 1
+    """, (session["user_id"],)).fetchone()
     conn.close()
-    if viaje: return render_template("conductor.html", viaje=viaje)
+
+    # Si encontramos el viaje, vamos a la pantalla de control
+    if viaje:
+        return render_template("conductor.html", viaje=dict(viaje))
+    
+    # SI NO HAY VIAJE (aquí es donde está "atorado" Juan), lo mandamos a la lista
     return redirect(url_for("viajes_disponibles"))
 
 @app.route("/aceptar_viaje/<int:id>")
@@ -136,7 +148,23 @@ def aceptar_viaje(id):
     conn.commit()
     conn.close()
     return redirect(url_for("conductor"))
+@app.route("/cambiar_estado_viaje/<int:id>/<nuevo_estado>")
+def cambiar_estado_viaje(id, nuevo_estado):
+    if session.get("tipo") != "conductor":
+        return redirect(url_for("login"))
 
+    conn = get_db()
+    # Actualizamos el estado en la base de datos
+    conn.execute("UPDATE viajes SET estado = ? WHERE id = ?", (nuevo_estado, id))
+    conn.commit()
+    conn.close()
+
+    # Si el viaje terminó, lo mandamos a ver nuevos viajes
+    if nuevo_estado == 'finalizado':
+        return redirect(url_for("viajes_disponibles"))
+    
+    # Si no, regresamos al panel del conductor para ver el mapa
+    return redirect(url_for("conductor"))
 @app.route("/finalizar_viaje/<int:id>")
 def finalizar_viaje(id):
     conn = get_db()
