@@ -76,10 +76,25 @@ def cliente():
 @app.route("/pedir_viaje", methods=["POST"])
 def pedir_viaje():
     d = request.form
+    user_id = session.get("user_id")
     conn = get_db()
     
-    # IMPORTANTE: Convertimos a float() para que el mapa pueda leer los números
+    # 1. VALIDACIÓN: ¿Ya tiene un viaje activo?
+    # Buscamos cualquier viaje que NO esté finalizado ni cancelado
+    viaje_activo = conn.execute("""
+        SELECT id FROM viajes 
+        WHERE cliente_id = ? AND estado NOT IN ('finalizado', 'cancelado')
+    """, (user_id,)).fetchone()
+
+    if viaje_activo:
+        conn.close()
+        # Si ya tiene uno, lo regresamos a su panel con un aviso
+        # Nota: Asegúrate de que tu base.html o cliente.html maneje mensajes 'error'
+        return redirect(url_for("cliente", error="Ya tienes un viaje en curso."))
+
+    # 2. PROCESO DE GUARDADO (Si no tiene viajes activos)
     try:
+        # Convertimos a float() para que el mapa pueda leer los números
         lat = float(d.get("lat", 0))
         lng = float(d.get("lng", 0))
         lat_d = float(d.get("lat_destino", 0))
@@ -88,7 +103,7 @@ def pedir_viaje():
         conn.execute("""
             INSERT INTO viajes (cliente_id, estado, origen, destino, lat, lng, lat_destino, lng_destino)
             VALUES (?, 'pendiente', ?, ?, ?, ?, ?, ?)
-        """, (session.get("user_id"), d.get("origen", "N/A"), d.get("destino", "N/A"), 
+        """, (user_id, d.get("origen", "N/A"), d.get("destino", "N/A"), 
               lat, lng, lat_d, lng_d))
         
         conn.commit()
@@ -98,7 +113,6 @@ def pedir_viaje():
         conn.close()
         
     return redirect(url_for("cliente"))
-
 # ---------------------- CONDUCTOR ----------------------
 @app.route("/viajes_disponibles")
 def viajes_disponibles():
@@ -140,14 +154,37 @@ def conductor():
     
     # SI NO HAY VIAJE (aquí es donde está "atorado" Juan), lo mandamos a la lista
     return redirect(url_for("viajes_disponibles"))
-
-@app.route("/aceptar_viaje/<int:id>")
-def aceptar_viaje(id):
+@app.route("/aceptar_viaje/<int:viaje_id>")
+def aceptar_viaje(viaje_id):
+    user_id = session.get("user_id")
     conn = get_db()
-    conn.execute("UPDATE viajes SET conductor_id=?, estado='aceptado' WHERE id=? AND estado='pendiente'", (session["user_id"], id))
-    conn.commit()
-    conn.close()
+    
+    # 1. VALIDACIÓN: ¿El conductor ya está ocupado con otro viaje?
+    ocupado = conn.execute("""
+        SELECT id FROM viajes 
+        WHERE conductor_id = ? AND estado NOT IN ('finalizado', 'cancelado')
+    """, (user_id,)).fetchone()
+
+    if ocupado:
+        conn.close()
+        # Lo mandamos de vuelta a la lista con un mensaje de error
+        return redirect(url_for("viajes_disponibles", error="Ya tienes un viaje activo. Termínalo primero."))
+
+    # 2. PROCESO DE ACEPTAR EL VIAJE (Si está libre)
+    try:
+        conn.execute("""
+            UPDATE viajes 
+            SET conductor_id = ?, estado = 'aceptado' 
+            WHERE id = ? AND estado = 'pendiente'
+        """, (user_id, viaje_id))
+        conn.commit()
+    except Exception as e:
+        print(f"Error al aceptar viaje: {e}")
+    finally:
+        conn.close()
+    
     return redirect(url_for("conductor"))
+
 @app.route("/cambiar_estado_viaje/<int:id>/<nuevo_estado>")
 def cambiar_estado_viaje(id, nuevo_estado):
     if session.get("tipo") != "conductor":

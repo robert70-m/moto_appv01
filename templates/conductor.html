@@ -1,6 +1,9 @@
 {% extends "base.html" %}
 
 {% block content %}
+<link rel="stylesheet" href="https://unpkg.com/leaflet-routing-machine@latest/dist/leaflet-routing-machine.css" />
+<script src="https://unpkg.com/leaflet-routing-machine@latest/dist/leaflet-routing-machine.js"></script>
+
 <audio id="sonidoNotificacion" src="{{ url_for('static', filename='alerta.mp3') }}" preload="auto"></audio>
 
 <div class="card" style="text-align: center;">
@@ -58,10 +61,13 @@
 }
 @keyframes parpadeo { 0% { opacity: 1; } 50% { opacity: 0.7; } 100% { opacity: 1; } }
 button:disabled { background: #bdc3c7 !important; cursor: not-allowed; opacity: 0.6; }
+
+/* Ocultar el panel de instrucciones de texto del enrutamiento para que no estorbe */
+.leaflet-routing-container { display: none !important; }
 </style>
 
 <script>
-// --- 1. LÓGICA DEL MAPA ---
+// --- 1. LÓGICA DEL MAPA CON RUTAS REALES ---
 {% if viaje %}
 document.addEventListener("DOMContentLoaded", function() {
     try {
@@ -77,13 +83,26 @@ document.addEventListener("DOMContentLoaded", function() {
             attribution: '© OpenStreetMap'
         }).addTo(map);
 
-        L.marker([latO, lngO]).addTo(map).bindPopup("Recoger Cliente");
-        L.marker([latD, lngD]).addTo(map).bindPopup("Destino del Viaje");
+        // Control de enrutamiento para trazar por calles
+        L.Routing.control({
+            waypoints: [
+                L.latLng(latO, lngO),
+                L.latLng(latD, lngD)
+            ],
+            lineOptions: {
+                styles: [{color: 'blue', opacity: 0.7, weight: 6}]
+            },
+            addWaypoints: false,
+            draggableWaypoints: false,
+            show: false,
+            createMarker: function(i, wp, nWps) {
+                if (i === 0) return L.marker(wp.latLng).bindPopup("Recoger Cliente");
+                return L.marker(wp.latLng).bindPopup("Destino del Viaje");
+            }
+        }).addTo(map);
 
-        var polyline = L.polyline([[latO, lngO], [latD, lngD]], {color: 'blue', weight: 6, opacity: 0.7}).addTo(map);
-        map.fitBounds(polyline.getBounds(), {padding: [30, 30]});
     } catch (e) {
-        console.error("Error al cargar el mapa:", e);
+        console.error("Error al cargar el mapa con ruta:", e);
     }
 });
 {% endif %}
@@ -95,11 +114,9 @@ function actualizarEstado(nuevoEstado, viajeId) {
         return;
     }
 
-    // Llamada al endpoint de Python para cambiar el estado en SQLite
     fetch(`/cambiar_estado_viaje/${viajeId}/${nuevoEstado}`)
         .then(response => {
             if (response.ok) {
-                // Forzamos redirección según el nuevo estado
                 if (nuevoEstado === 'finalizado') {
                     window.location.href = "/viajes_disponibles";
                 } else {
@@ -111,7 +128,7 @@ function actualizarEstado(nuevoEstado, viajeId) {
         })
         .catch(err => {
             console.error("Error de Fetch:", err);
-            alert("Error de conexión. Revisa que el servidor esté activo.");
+            alert("Error de conexión.");
         });
 }
 
@@ -154,7 +171,6 @@ function detenerAlerta() {
 }
 
 setInterval(() => {
-    // Solo busca nuevos viajes si Juan no está ocupado en uno actualmente
     {% if not viaje %}
     fetch("/verificar_viajes")
         .then(res => res.json())
