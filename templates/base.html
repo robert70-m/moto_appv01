@@ -26,7 +26,6 @@
             color: #333;
         }
 
-        /* Cabecera persistente */
         .header {
             background: var(--primary);
             color: white;
@@ -40,16 +39,14 @@
             box-shadow: 0 2px 10px rgba(0,0,0,0.2);
         }
 
-        .header-title { font-size: 1.2rem; font-weight: bold; }
+        .header-title { font-size: 1.2rem; font-weight: bold; text-decoration: none; color: white; }
 
-        /* Contenedor principal */
         .container {
             padding: 15px;
             max-width: 600px;
             margin: auto;
         }
 
-        /* Tarjetas de contenido */
         .card {
             background: white;
             padding: 20px;
@@ -58,7 +55,6 @@
             margin-bottom: 20px;
         }
 
-        /* Notificaciones flotantes (Toast) */
         #toast {
             display: none;
             position: fixed;
@@ -76,8 +72,18 @@
             min-width: 250px;
         }
 
-        /* Menú de usuario */
-        .user-menu { position: relative; }
+        .user-menu { position: relative; display: flex; gap: 10px; }
+        
+        /* Estilo para botones de login/registro en el header */
+        .nav-link {
+            color: white;
+            text-decoration: none;
+            font-size: 14px;
+            padding: 8px 12px;
+            border-radius: 5px;
+            background: rgba(255,255,255,0.1);
+        }
+
         .user-btn {
             background: #34495e;
             color: white;
@@ -115,7 +121,6 @@
 
         .dropdown a:hover { background: #f8f9fa; }
 
-        /* Inputs globales para formularios */
         input[type="text"], input[type="password"], input[type="email"], select {
             width: 100%;
             padding: 12px;
@@ -131,21 +136,24 @@
     <div id="toast"></div>
 
     <header class="header">
-        <div class="header-title">Moto App 🏍️</div>
+        <a href="/" class="header-title">Moto App 🏍️</a>
         
-        {% if session.get('user_id') %}
         <div class="user-menu">
-            <button onclick="toggleMenu()" class="user-btn">
-                <i class="fas fa-user-circle"></i> 
-                {{ session.get('nombre', 'Usuario') }}
-            </button>
-            <div id="dropdown" class="dropdown">
-                <a href="/logout" style="color: var(--danger);">
-                    <i class="fas fa-sign-out-alt"></i> Cerrar sesión
-                </a>
-            </div>
+            {% if session.get('user_id') %}
+                <button onclick="toggleMenu()" class="user-btn">
+                    <i class="fas fa-user-circle"></i> 
+                    {{ session.get('nombre', 'Usuario') }}
+                </button>
+                <div id="dropdown" class="dropdown">
+                    <a href="/logout" style="color: var(--danger);">
+                        <i class="fas fa-sign-out-alt"></i> Cerrar sesión
+                    </a>
+                </div>
+            {% else %}
+                <a href="{{ url_for('login') }}" class="nav-link">Ingresar</a>
+                <a href="{{ url_for('registro') }}" class="nav-link" style="background: var(--accent);">Registrar</a>
+            {% endif %}
         </div>
-        {% endif %}
     </header>
 
     <main class="container">
@@ -153,20 +161,17 @@
 
         {% if not session.get('user_id') %}
         <div style="text-align: center; margin-top: 30px; background: rgba(255,255,255,0.9); padding: 15px; border-radius: 12px;">
-            <p style="margin: 0; font-size: 14px;">¿Quieres usar esta app como conduntor imformate al 9513928223?</p>
-            
+            <p style="margin: 0; font-size: 14px;">¿Quieres usar esta app como conductor? Infórmate al 9513928223</p>
         </div>
         {% endif %}
     </main>
 
     <script>
-        // Manejo del menú desplegable
         function toggleMenu() {
             const menu = document.getElementById("dropdown");
             menu.style.display = menu.style.display === "block" ? "none" : "block";
         }
 
-        // Función global para alertas (Toasts)
         function mostrarToast(mensaje, tipo = 'error') {
             const toast = document.getElementById("toast");
             toast.innerText = mensaje;
@@ -178,7 +183,6 @@
             }, 4000);
         }
 
-        // Cerrar dropdown al hacer clic fuera
         window.onclick = function(e) {
             if (!e.target.matches('.user-btn') && !e.target.parentNode.matches('.user-btn')) {
                 const dropdown = document.getElementById("dropdown");
@@ -186,7 +190,6 @@
             }
         }
 
-        // Detectar si hay mensajes de error en la URL para mostrarlos automáticamente
         window.onload = function() {
             const params = new URLSearchParams(window.location.search);
             if (params.get("error")) {
