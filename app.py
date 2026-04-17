@@ -39,18 +39,38 @@ crear_tablas()
 @app.route("/", methods=["GET", "POST"])
 def login():
     error = None
+
     if request.method == "POST":
         telefono = request.form.get("telefono", "").strip()
         password = request.form.get("password", "").strip()
-        conn = get_db()
-        user = conn.execute("SELECT * FROM usuarios WHERE telefono=? AND password=?", (telefono, password)).fetchone()
-        conn.close()
-        if user:
-            session.update({"user_id": user["id"], "tipo": user["tipo"], "nombre": user["nombre"], "telefono": user["telefono"]})
-            return redirect(url_for("cliente" if user["tipo"] == "cliente" else "conductor"))
-        error = "Datos incorrectos"
-    return render_template("login.html", error=error)
 
+        conn = get_db()
+        user = conn.execute(
+            "SELECT * FROM usuarios WHERE telefono=? AND password=?",
+            (telefono, password)
+        ).fetchone()
+        conn.close()
+
+        if user:
+            session.update({
+                "user_id": user["id"],
+                "tipo": str(user["tipo"]).lower().strip(),
+                "nombre": user["nombre"],
+                "telefono": user["telefono"]
+            })
+
+            # 🔥 REDIRECCIÓN CORRECTA
+            if session["tipo"] == "cliente":
+                return redirect(url_for("cliente"))
+            elif session["tipo"] == "conductor":
+                return redirect(url_for("conductor"))
+            else:
+                return redirect(url_for("login"))
+
+        else:
+            error = "Datos incorrectos"
+
+    return render_template("login.html", error=error)
 @app.route("/registro", methods=["GET", "POST"])
 def registro():
     if request.method == "POST":
@@ -126,12 +146,30 @@ def viajes_disponibles():
 @app.route("/registro_conductor", methods=["GET", "POST"])
 def registro_conductor():
     if request.method == "POST":
-        n, t, p = request.form.get("nombre"), request.form.get("telefono"), request.form.get("password")
+        n = request.form.get("nombre")
+        t = request.form.get("telefono")
+        p = request.form.get("password")
+
         conn = get_db()
-        conn.execute("INSERT INTO usuarios (nombre, telefono, password, tipo) VALUES (?, ?, ?, 'conductor')", (n, t, p))
+
+        existe = conn.execute(
+            "SELECT id FROM usuarios WHERE telefono=?",
+            (t,)
+        ).fetchone()
+
+        if existe:
+            conn.close()
+            return "Teléfono ya registrado"
+
+        conn.execute(
+            "INSERT INTO usuarios (nombre, telefono, password, tipo) VALUES (?, ?, ?, 'conductor')",
+            (n, t, p)
+        )
         conn.commit()
         conn.close()
-        return redirect(url_for("admin"))
+
+        return redirect(url_for("login"))
+
     return render_template("registro_conductor.html")
 @app.route("/conductor")
 def conductor():
