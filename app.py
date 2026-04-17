@@ -73,17 +73,30 @@ def cliente():
     viaje = conn.execute("SELECT * FROM viajes WHERE cliente_id=? AND estado != 'finalizado' ORDER BY id DESC LIMIT 1", (session["user_id"],)).fetchone()
     conn.close()
     return render_template("cliente.html", viaje_id=viaje["id"] if viaje else None)
-
 @app.route("/pedir_viaje", methods=["POST"])
 def pedir_viaje():
     d = request.form
     conn = get_db()
-    conn.execute("""INSERT INTO viajes (cliente_id, estado, origen, destino, lat, lng, lat_destino, lng_destino)
-                    VALUES (?, 'pendiente', ?, ?, ?, ?, ?, ?)""", 
-                 (session.get("user_id"), d.get("origen", "N/A"), d.get("destino", "N/A"), 
-                  d.get("lat", 0), d.get("lng", 0), d.get("lat_destino", 0), d.get("lng_destino", 0)))
-    conn.commit()
-    conn.close()
+    
+    # IMPORTANTE: Convertimos a float() para que el mapa pueda leer los números
+    try:
+        lat = float(d.get("lat", 0))
+        lng = float(d.get("lng", 0))
+        lat_d = float(d.get("lat_destino", 0))
+        lng_d = float(d.get("lng_destino", 0))
+        
+        conn.execute("""
+            INSERT INTO viajes (cliente_id, estado, origen, destino, lat, lng, lat_destino, lng_destino)
+            VALUES (?, 'pendiente', ?, ?, ?, ?, ?, ?)
+        """, (session.get("user_id"), d.get("origen", "N/A"), d.get("destino", "N/A"), 
+              lat, lng, lat_d, lng_d))
+        
+        conn.commit()
+    except Exception as e:
+        print(f"Error al guardar viaje: {e}")
+    finally:
+        conn.close()
+        
     return redirect(url_for("cliente"))
 
 # ---------------------- CONDUCTOR ----------------------
