@@ -8,21 +8,18 @@
 
 <div class="card">
     <h2>Pedir Moto 🏍️</h2>
+<form action="/pedir_viaje" method="POST">
+    <input type="text" id="input_origen" name="origen" readonly required>
+    <input type="text" id="input_destino" name="destino" readonly required>
 
-    <form action="/pedir_viaje" method="POST">
-        <label style="font-size: 12px; color: gray;">Tu ubicación (Origen):</label>
-        <input type="text" id="input_origen" name="origen" readonly value="Obteniendo GPS... 📡">
-        
-        <label style="font-size: 12px; color: gray; display: block; margin-top: 10px;">Destino:</label>
-        <input type="text" id="input_destino" name="destino" placeholder="Toca el mapa para marcar destino" readonly>
+    <input type="hidden" id="lat" name="lat">
+    <input type="hidden" id="lng" name="lng">
+    <input type="hidden" id="lat_destino" name="lat_destino">
+    <input type="hidden" id="lng_destino" name="lng_destino">
 
-        <input type="hidden" id="lat" name="lat">
-        <input type="hidden" id="lng" name="lng">
-        <input type="hidden" id="lat_destino" name="lat_destino">
-        <input type="hidden" id="lng_destino" name="lng_destino">
-
-        <button type="submit" id="btn_pedir">Pedir viaje 🚀</button>
-    </form>
+    <button type="submit">Pedir viaje 🚀</button>
+</form>
+    
 </div>
 
 <div id="status_conductor" style="display:none; padding:15px; background:#d4edda; border-radius:10px; margin: 10px 0; border: 1px solid #c3e6cb;">
