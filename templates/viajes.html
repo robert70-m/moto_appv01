@@ -1,120 +1,32 @@
 {% extends "base.html" %}
 
 {% block content %}
+
 <div class="container-viajes" style="padding: 10px; max-width: 800px; margin: auto;">
     <div class="card">
         <h2 style="text-align: center;">Viajes Disponibles 🔎</h2>
 
         {% if request.args.get('error') %}
-        <div style="background: #fdeaea; color: #e74c3c; padding: 12px; border-radius: 8px; border: 1px solid #f5c6cb; font-weight: bold; text-align: center; margin-bottom: 15px;">
-            <i class="fas fa-exclamation-circle"></i> {{ request.args.get('error') }}
+        <div style="background: #fdeaea; color: #e74c3c; padding: 12px; border-radius: 8px;">
+            {{ request.args.get('error') }}
         </div>
         {% endif %}
 
         {% if viajes %}
             {% for viaje in viajes %}
-            <div style="border: 1px solid #eee; padding: 15px; border-radius: 10px; margin-bottom: 15px; background: #fff;">
-                <p><strong>📍 Origen:</strong> {{ viaje.origen }}</p>
-                <p><strong>🏁 Destino:</strong> {{ viaje.destino }}</p>
+            <div style="border: 1px solid #eee; padding: 15px; margin-bottom: 15px;">
+                <p><strong>Origen:</strong> {{ viaje.origen }}</p>
+                <p><strong>Destino:</strong> {{ viaje.destino }}</p>
                 
                 <a href="{{ url_for('aceptar_viaje', viaje_id=viaje.id) }}">
-                    <button style="background: #27ae60; color: white; border: none; padding: 10px; width: 100%; border-radius: 5px; font-weight: bold; cursor: pointer;">
-                        Aceptar Viaje 🏍️
-                    </button>
+                    <button>Aceptar Viaje</button>
                 </a>
             </div>
             {% endfor %}
         {% else %}
-            <p style="text-align: center; color: #7f8c8d; padding: 20px;">
-                No hay viajes disponibles en este momento. 😴
-            </p>
+            <p>No hay viajes disponibles</p>
         {% endif %}
     </div>
 </div>
 
-
-  <div class="card" style="text-align: center; margin-bottom: 20px;">
-        <h2 style="color: #2c3e50; margin-bottom: 10px;">
-            <i class="fas fa-list-ul"></i> Viajes Disponibles
-        </h2>
-        <p style="color: #7f8c8d; font-size: 14px;">Revisa la ruta en el mapa antes de aceptar</p>
-    </div>
-
-    <div style="margin-bottom: 15px;">
-        <input type="text" id="buscador" placeholder="🔍 Filtrar por destino..." 
-               onkeyup="filtrarTabla()" 
-               style="width: 100%; padding: 12px; border: 1px solid #ddd; border-radius: 8px; font-size: 16px;">
-    </div>
-
-    <div id="lista-viajes">
-        {% for v in viajes %}
-        <div class="card-viaje-item" style="background: white; padding: 15px; border-radius: 12px; margin-bottom: 20px; border-left: 5px solid #3498db; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">
-            <div style="display: flex; justify-content: space-between; margin-bottom: 10px;">
-                <div>
-                    <h4 style="margin: 0; color: #34495e;">Origen: {{ v['origen'] }}</h4>
-                    <p style="margin: 5px 0; color: #e74c3c;"><b>Destino:</b> {{ v['destino'] }}</p>
-                </div>
-                <span style="font-size: 12px; color: #7f8c8d;">ID: #{{ v['id'] }}</span>
-            </div>
-
-            <div id="map_{{ v['id'] }}" style="height: 200px; width: 100%; border-radius: 8px; margin-bottom: 15px; border: 1px solid #ccc;"></div>
-
-            <div style="display: flex; gap: 10px;">
-                <a href="{{ url_for('aceptar_viaje', id=v['id']) }}" 
-                   class="btn-aceptar" 
-                   onclick="return confirm('¿Confirmas que tomarás este viaje?')"
-                   style="flex: 1; background: #27ae60; color: white; text-align: center; padding: 12px; border-radius: 8px; text-decoration: none; font-weight: bold;">
-                    ACEPTAR VIAJE
-                </a>
-            </div>
-        </div>
-
-        <script>
-            // Inicializar mapa para cada viaje individualmente
-            (function() {
-                var latO = {{ v['lat'] or 0 }};
-                var lngO = {{ v['lng'] or 0 }};
-                var latD = {{ v['lat_destino'] or 0 }};
-                var lngD = {{ v['lng_destino'] or 0 }};
-
-                if (latO !== 0 && latD !== 0) {
-                    var map = L.map('map_{{ v['id'] }}', {
-                        zoomControl: false,
-                        attributionControl: false
-                    }).setView([latO, lngO], 14);
-
-                    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
-
-                    var markerO = L.marker([latO, lngO]).addTo(map).bindPopup("Recoger");
-                    var markerD = L.marker([latD, lngD]).addTo(map).bindPopup("Destino");
-
-                    var polyline = L.polyline([[latO, lngO], [latD, lngD]], {color: 'blue', weight: 4}).addTo(map);
-                    map.fitBounds(polyline.getBounds(), {padding: [20, 20]});
-                } else {
-                    document.getElementById('map_{{ v['id'] }}').innerText = "Coordenadas no disponibles";
-                }
-            })();
-        </script>
-        {% endfor %}
-    </div>
-
-    {% if viajes|length == 0 %}
-    <div style="text-align: center; padding: 50px;">
-        <h3 style="color: #95a5a6;">No hay viajes pendientes</h3>
-    </div>
-    {% endif %}
-
-</div>
-
-<script>
-function filtrarTabla() {
-    let input = document.getElementById("buscador");
-    let filter = input.value.toLowerCase();
-    let items = document.getElementsByClassName("card-viaje-item");
-    for (let i = 0; i < items.length; i++) {
-        let texto = items[i].innerText.toLowerCase();
-        items[i].style.display = texto.includes(filter) ? "" : "none";
-    }
-}
-</script>
 {% endblock %}
