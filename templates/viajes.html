@@ -9,9 +9,37 @@
         <div style="border:1px solid #ccc; margin:10px; padding:10px;">
             <p>{{ viaje.origen }} → {{ viaje.destino }}</p>
         </div>
+        <div id="map_{{ viaje.id }}" style="height:200px;"></div>
     {% endfor %}
 {% else %}
     <p>No hay viajes</p>
 {% endif %}
 
+
+<script>
+document.addEventListener("DOMContentLoaded", function() {
+
+    {% for viaje in viajes %}
+
+    var latO = {{ viaje.lat or 0 }};
+    var lngO = {{ viaje.lng or 0 }};
+    var latD = {{ viaje.lat_destino or 0 }};
+    var lngD = {{ viaje.lng_destino or 0 }};
+
+    if (latO && latD) {
+        var map = L.map('map_{{ viaje.id }}').setView([latO, lngO], 13);
+
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
+
+        L.marker([latO, lngO]).addTo(map);
+        L.marker([latD, lngD]).addTo(map);
+
+        var ruta = L.polyline([[latO, lngO], [latD, lngD]]).addTo(map);
+        map.fitBounds(ruta.getBounds());
+    }
+
+    {% endfor %}
+
+});
+</script>
 {% endblock %}
