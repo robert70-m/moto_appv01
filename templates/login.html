@@ -35,8 +35,8 @@
             ¿Quieres generar ingresos?
         </p>
         <a href="https://wa.me/5219513928223?text={{ (
-    'Hola, soy ' ~ user['nombre'] ~ 
-    ' y quiero informes para trabajar como ' ~ user['tipo']
+    'Hola, soy ' ~ (session.get('nombre', 'usuario')) ~ 
+    ' y quiero informes para trabajar como ' ~ (session.get('tipo', 'conductor'))
 ) | urlencode }}" 
 target="_blank">
     WhatsApp
