@@ -1,4 +1,4 @@
-º{% extends "base.html" %}
+{% extends "base.html" %}
 
 {% block content %}
 
@@ -29,6 +29,17 @@
 
         <button type="submit" style="margin-top: 20px;">Pedir viaje 🚀</button>
     </form>
+
+    <!-- 🔥 BOTÓN CANCELAR -->
+    {% if viaje_id %}
+    <a href="{{ url_for('cancelar_viaje', id=viaje_id) }}"
+       onclick="return confirm('¿Seguro que deseas cancelar el viaje?')">
+        <button style="margin-top:10px;background:#e74c3c;color:white;padding:12px;border:none;border-radius:6px;width:100%;">
+            ❌ Cancelar Viaje
+        </button>
+    </a>
+    {% endif %}
+
 </div> 
 
 
@@ -68,14 +79,11 @@ document.addEventListener("DOMContentLoaded", function() {
     let marcadorDestino = null;
     let primeraVez = true;
 
-    // --- MAPA ---
     function initMap(lat, lng) {
         if (map) return; 
         map = L.map('map').setView([lat, lng], 16);
 
-        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-            attribution: '© OpenStreetMap'
-        }).addTo(map);
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
 
         setTimeout(() => { map.invalidateSize(); }, 500);
 
@@ -96,7 +104,6 @@ document.addEventListener("DOMContentLoaded", function() {
         });
     }
 
-    // --- GPS ---
     if (navigator.geolocation) {
         navigator.geolocation.watchPosition(function(pos) {
             const lat = pos.coords.latitude;
@@ -119,17 +126,9 @@ document.addEventListener("DOMContentLoaded", function() {
                 map.setView([lat, lng], 16);
                 primeraVez = false;
             }
-        }, function(err) {
-            console.error("Error GPS:", err.message);
-            if (!map) initMap(16.75, -96.67); 
-        }, {
-            enableHighAccuracy: true,
-            timeout: 10000,
-            maximumAge: 0
         });
     }
 
-    // --- ESTADO DEL VIAJE ---
     function vigilarViaje() {
         const idViaje = "{{ viaje_id }}";
 
@@ -143,35 +142,19 @@ document.addEventListener("DOMContentLoaded", function() {
             .then(data => {
                 if (data.estado === 'finalizado') {
                     mostrarToast("¡Viaje finalizado!", "success");
-                    setTimeout(() => {
-                        window.location.href = "/cliente";
-                    }, 1500);
+                    setTimeout(() => window.location.href = "/cliente", 1500);
                 } 
                 else if (['aceptado','en_camino','recogido'].includes(data.estado)) {
                     document.getElementById("status_conductor").style.display = "block";
                     document.getElementById("nombre_en_pantalla").innerText = data.conductor;
                     document.getElementById("texto_estado").innerText = data.estado;
                 }
-            })
-            .catch(() => console.log("Buscando actualización..."));
+            });
     }
 
     setInterval(vigilarViaje, 3000);
     vigilarViaje();
 });
-</script>
-
-<script>
-window.onload = function() {
-    const params = new URLSearchParams(window.location.search);
-
-    if (params.get("error") === "viaje_en_curso") {
-        mostrarToast("Ya tienes un viaje en curso. Espera a que termine.", "error");
-
-        // 🔥 limpiar URL para que no se repita
-        window.history.replaceState({}, document.title, "/cliente");
-    }
-}
 </script>
 
 {% endblock %}

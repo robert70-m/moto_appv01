@@ -8,7 +8,12 @@
 
 <div class="card" style="text-align: center;">
     <h2>Panel del Conductor 🏍️</h2>
-    <p style="color: #7f8c8d;">Estado actual: <strong id="status-text">En línea 🟢</strong></p>
+    <p style="color: #7f8c8d;">
+        Estado actual: 
+        <strong id="status-text">En línea 🟢</strong>
+    </p>
+
+    <p style="display:none;">Estado interno: <span id="estado">{{ viaje.estado if viaje else '' }}</span></p>
     
     <a href="/viajes_disponibles">
         <button style="background: #3498db; width: 100%; padding: 12px; border: none; color: white; border-radius: 5px; font-weight: bold; cursor: pointer;">
@@ -33,19 +38,19 @@
     {% endif %}
 
     <div style="display: flex; flex-direction: column; gap: 12px;">
-        <button id="btn_camino" onclick="actualizarEstado('en_camino', '{{ viaje.id if viaje else '' }}')" 
+        <button onclick="actualizarEstado('en_camino', '{{ viaje.id if viaje else '' }}')" 
                 style="background:#f39c12; color:white; padding:18px; border:none; border-radius:8px; font-weight:bold;"
                 {% if not viaje or viaje.estado != 'aceptado' %} disabled {% endif %}>
             En Camino al Cliente 🛵
         </button>
         
-        <button id="btn_recogido" onclick="actualizarEstado('recogido', '{{ viaje.id if viaje else '' }}')" 
+        <button onclick="actualizarEstado('recogido', '{{ viaje.id if viaje else '' }}')" 
                 style="background:#9b59b6; color:white; padding:18px; border:none; border-radius:8px; font-weight:bold;"
                 {% if not viaje or viaje.estado != 'en_camino' %} disabled {% endif %}>
             Cliente Recogido ✅
         </button>
         
-        <button id="btn_finalizado" onclick="actualizarEstado('finalizado', '{{ viaje.id if viaje else '' }}')" 
+        <button onclick="actualizarEstado('finalizado', '{{ viaje.id if viaje else '' }}')" 
                 style="background:#e74c3c; color:white; padding:18px; border:none; border-radius:8px; font-weight:bold;"
                 {% if not viaje or viaje.estado != 'recogido' %} disabled {% endif %}>
             Finalizar Viaje 🏁
@@ -61,13 +66,12 @@
 }
 @keyframes parpadeo { 0% { opacity: 1; } 50% { opacity: 0.7; } 100% { opacity: 1; } }
 button:disabled { background: #bdc3c7 !important; cursor: not-allowed; opacity: 0.6; }
-
-/* Ocultar el panel de instrucciones de texto del enrutamiento para que no estorbe */
 .leaflet-routing-container { display: none !important; }
 </style>
 
 <script>
-// --- 1. LÓGICA DEL MAPA CON RUTAS REALES ---
+
+// --- 1. MAPA ---
 {% if viaje %}
 document.addEventListener("DOMContentLoaded", function() {
     try {
@@ -76,14 +80,12 @@ document.addEventListener("DOMContentLoaded", function() {
         var latD = {{ viaje.lat_destino or 0 }};
         var lngD = {{ viaje.lng_destino or 0 }};
 
-        if (latO === 0 || latD === 0) return;
+        if (!latO || !latD) return;
 
         var map = L.map('map_conductor').setView([latO, lngO], 15);
-        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-            attribution: '© OpenStreetMap'
-        }).addTo(map);
 
-        // Control de enrutamiento para trazar por calles
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
+
         L.Routing.control({
             waypoints: [
                 L.latLng(latO, lngO),
@@ -95,73 +97,59 @@ document.addEventListener("DOMContentLoaded", function() {
             addWaypoints: false,
             draggableWaypoints: false,
             show: false,
-            createMarker: function(i, wp, nWps) {
-                if (i === 0) return L.marker(wp.latLng).bindPopup("Recoger Cliente");
-                return L.marker(wp.latLng).bindPopup("Destino del Viaje");
+            createMarker: function(i, wp) {
+                return L.marker(wp.latLng)
+                    .bindPopup(i === 0 ? "Recoger Cliente" : "Destino del Viaje");
             }
         }).addTo(map);
 
     } catch (e) {
-        console.error("Error al cargar el mapa con ruta:", e);
+        console.error("Error mapa:", e);
     }
 });
 {% endif %}
 
-// --- 2. ACTUALIZAR ESTADOS ---
+// --- 2. ESTADO ---
 function actualizarEstado(nuevoEstado, viajeId) {
     if (!viajeId || viajeId === "" || viajeId === "None") {
-        alert("Atención: No se encontró el ID del viaje activo.");
+        alert("No hay viaje activo.");
         return;
     }
 
     fetch(`/cambiar_estado_viaje/${viajeId}/${nuevoEstado}`)
-        .then(response => {
-            if (response.ok) {
-                if (nuevoEstado === 'finalizado') {
-                    window.location.href = "/viajes_disponibles";
-                } else {
-                    window.location.href = "/conductor";
-                }
-            } else {
-                alert("Error en el servidor al intentar cambiar el estado.");
-            }
-        })
-        .catch(err => {
-            console.error("Error de Fetch:", err);
-            alert("Error de conexión.");
-        });
+    .then(res => {
+        if (res.ok) {
+            window.location.href = nuevoEstado === 'finalizado' ? "/viajes_disponibles" : "/conductor";
+        } else {
+            alert("Error al actualizar estado");
+        }
+    });
 }
 
-// --- 3. RASTREO GPS ---
+// --- 3. GPS ---
 if (navigator.geolocation) {
-    navigator.geolocation.watchPosition(function(pos) {
-        const lat = pos.coords.latitude;
-        const lng = pos.coords.longitude;
+    navigator.geolocation.watchPosition(pos => {
+        let fd = new FormData();
+        fd.append("lat", pos.coords.latitude);
+        fd.append("lng", pos.coords.longitude);
 
-        let formData = new FormData();
-        formData.append("lat", lat);
-        formData.append("lng", lng);
-
-        fetch("/actualizar_ubicacion", {
-            method: "POST",
-            body: formData
-        }).catch(err => console.log("Error sincronizando GPS"));
-    }, null, { enableHighAccuracy: true });
+        fetch("/actualizar_ubicacion", { method: "POST", body: fd });
+    });
 }
 
-// --- 4. ALERTAS DE NUEVO VIAJE ---
+// --- 4. ALERTA NUEVOS VIAJES ---
 let alertaActiva = false;
 let intervaloSonido;
+let ultimoId = 0;
 
 function iniciarAlerta() {
     if (alertaActiva) return;
     alertaActiva = true;
+
     document.getElementById("alerta-viaje").style.display = "block";
-    
+
     const sonido = document.getElementById("sonidoNotificacion");
-    intervaloSonido = setInterval(() => {
-        sonido.play().catch(e => console.log("Interacción requerida para audio"));
-    }, 2000);
+    intervaloSonido = setInterval(() => sonido.play().catch(()=>{}), 2000);
 }
 
 function detenerAlerta() {
@@ -172,10 +160,32 @@ function detenerAlerta() {
 
 setInterval(() => {
     {% if not viaje %}
-    fetch("/verificar_viajes")
-        .then(res => res.json())
-        .then(data => { if (data.nuevo_viaje) iniciarAlerta(); });
+    fetch(`/verificar_viajes?ultimo_id=${ultimoId}`)
+    .then(r => r.json())
+    .then(data => {
+        if (data.nuevo_viaje) {
+            iniciarAlerta();
+            ultimoId = data.id;
+        }
+    });
     {% endif %}
 }, 5000);
+
+// --- 5. DETECTAR CANCELACIÓN ---
+let ultimoCancelado = 0;
+
+setInterval(() => {
+    fetch(`/verificar_cancelaciones?ultimo_id=${ultimoCancelado}`)
+    .then(r => r.json())
+    .then(data => {
+        if (data.cancelado) {
+            alert("❌ El cliente canceló el viaje");
+            ultimoCancelado = data.id;
+            window.location.href = "/viajes_disponibles";
+        }
+    });
+}, 4000);
+
 </script>
+
 {% endblock %}

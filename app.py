@@ -297,6 +297,22 @@ def aceptar_viaje_ajax(id):
     conn.commit()
     conn.close()
     return jsonify({"ok": True})
+@app.route("/api/viaje_cliente")
+def api_viaje_cliente():
+    user_id = session.get("user_id")
+
+    conn = get_db()
+
+    viaje = conn.execute("""
+        SELECT * FROM viajes
+        WHERE cliente_id = ?
+        AND estado != 'finalizado'
+        ORDER BY id DESC LIMIT 1
+    """, (user_id,)).fetchone()
+
+    conn.close()
+
+    return {"viaje": dict(viaje) if viaje else None}
 
 # ---------------------- UBICACIÓN ----------------------
 @app.route("/actualizar_ubicacion", methods=["POST"])
@@ -370,6 +386,108 @@ def api_estado_viaje(id):
             "conductor": viaje["conductor_nombre"] if viaje["conductor_nombre"] else "Buscando..."
         })
     return jsonify({"error": "No encontrado"}), 404
+@app.route("/api/viaje_actual")
+def api_viaje_actual():
+    if not session.get("user_id"):
+        return {"viaje": None}
 
+    conn = get_db()
+
+    viaje = conn.execute("""
+        SELECT * FROM viajes
+        WHERE conductor_id = ?
+        AND estado IN ('aceptado', 'en_camino', 'recogido')
+        ORDER BY id DESC LIMIT 1
+    """, (session["user_id"],)).fetchone()
+
+    conn.close()
+
+    if viaje:
+        return {"viaje": dict(viaje)}
+    else:
+        return {"viaje": None}
+
+@app.route("/cancelar_viaje/<int:id>")
+def cancelar_viaje(id):
+
+    # 🔒 validar sesión
+    if not session.get("user_id"):
+        return redirect(url_for("login"))
+
+    conn = get_db()
+
+    try:
+        # 🔴 Solo cancelar si es del cliente y está pendiente
+        viaje = conn.execute("""
+            SELECT * FROM viajes
+            WHERE id = ? AND cliente_id = ? AND estado = 'pendiente'
+        """, (id, session["user_id"])).fetchone()
+
+        if not viaje:
+            return redirect(url_for("cliente"))
+
+        # 🟢 cancelar
+        conn.execute("""
+            UPDATE viajes
+            SET estado = 'cancelado'
+            WHERE id = ?
+        """, (id,))
+        conn.commit()
+
+    except Exception as e:
+        print("ERROR cancelar_viaje:", e)
+
+    finally:
+        conn.close()
+
+    return redirect(url_for("cliente"))
+@app.route("/verificar_viajes")
+def verificar_viajes():
+    try:
+        ultimo_id = int(request.args.get("ultimo_id", 0))
+    except:
+        ultimo_id = 0
+
+    conn = get_db()
+
+    viaje = conn.execute("""
+        SELECT id FROM viajes 
+        WHERE estado = 'pendiente' AND id > ?
+        ORDER BY id DESC LIMIT 1
+    """, (ultimo_id,)).fetchone()
+
+    conn.close()
+
+    if viaje:
+        return {"nuevo_viaje": True, "id": viaje["id"]}
+    else:
+        return {"nuevo_viaje": False}
+
+
+@app.route("/verificar_cancelaciones")
+def verificar_cancelaciones():
+    user_id = session.get("user_id")
+
+    try:
+        ultimo_id = int(request.args.get("ultimo_id", 0))
+    except:
+        ultimo_id = 0
+
+    conn = get_db()
+
+    cancelado = conn.execute("""
+        SELECT id FROM viajes
+        WHERE conductor_id = ?
+        AND estado = 'cancelado'
+        AND id > ?
+        ORDER BY id DESC LIMIT 1
+    """, (user_id, ultimo_id)).fetchone()
+
+    conn.close()
+
+    if cancelado:
+        return {"cancelado": True, "id": cancelado["id"]}
+    else:
+        return {"cancelado": False}
 if __name__ == "__main__":
-    app.run()
+    app.run(debug=True)
