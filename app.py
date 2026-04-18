@@ -146,7 +146,7 @@ def viajes_disponibles():
     viajes_query = [dict(row) for row in cursor.fetchall()]
     conn.close()
 ##
-    print("CONDUCTOR SESSION:", dict(session))
+    print("VIAJES:", viajes_query)
     return render_template("viajes.html", viajes=viajes_query)
 
 @app.route("/registro_conductor", methods=["GET", "POST"])
