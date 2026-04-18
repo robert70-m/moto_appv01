@@ -28,5 +28,27 @@
         {% endif %}
     </div>
 </div>
+<div id="map_{{ viaje.id }}" style="height: 200px; margin-top:10px;"></div>
+
+<script>
+(function() {
+    var latO = {{ viaje.lat or 0 }};
+    var lngO = {{ viaje.lng or 0 }};
+    var latD = {{ viaje.lat_destino or 0 }};
+    var lngD = {{ viaje.lng_destino or 0 }};
+
+    if (latO && latD) {
+        var map = L.map('map_{{ viaje.id }}').setView([latO, lngO], 14);
+
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
+
+        L.marker([latO, lngO]).addTo(map).bindPopup("Origen");
+        L.marker([latD, lngD]).addTo(map).bindPopup("Destino");
+
+        var ruta = L.polyline([[latO, lngO], [latD, lngD]]).addTo(map);
+        map.fitBounds(ruta.getBounds());
+    }
+})();
+</script>
 
 {% endblock %}
