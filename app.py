@@ -51,6 +51,8 @@ def login():
         ).fetchone()
         conn.close()
 
+##
+        print("USER ENCONTRADO:", user)
         if user:
             session.update({
                 "user_id": user["id"],
@@ -59,6 +61,8 @@ def login():
                 "telefono": user["telefono"]
             })
 
+##
+            print("SESSION DESPUÉS DE LOGIN:", dict(session))  # 👈 AQUÍ
             # 🔥 REDIRECCIÓN CORRECTA
             if session["tipo"] == "cliente":
                 return redirect(url_for("cliente"))
@@ -141,6 +145,8 @@ def viajes_disponibles():
     cursor = conn.execute("SELECT * FROM viajes WHERE estado = 'pendiente'")
     viajes_query = [dict(row) for row in cursor.fetchall()]
     conn.close()
+##
+    print("CONDUCTOR SESSION:", dict(session))
     return render_template("viajes.html", viajes=viajes_query)
 
 @app.route("/registro_conductor", methods=["GET", "POST"])
@@ -173,25 +179,27 @@ def registro_conductor():
     return render_template("registro_conductor.html")
 @app.route("/conductor")
 def conductor():
-    if session.get("tipo") != "conductor":
-        return redirect(url_for("login"))
+##
+    print("SESSION EN /conductor:", dict(session))  # 👈 DEBUG
 
+    if "conductor" not in str(session.get("tipo", "")).lower():
+        return redirect(url_for("login"))
     conn = get_db()
-    # Buscamos el viaje donde Juan es el conductor y el viaje NO está finalizado
+
     viaje = conn.execute("""
         SELECT * FROM viajes 
         WHERE conductor_id = ? 
         AND estado IN ('aceptado', 'en_camino', 'recogido')
         ORDER BY id DESC LIMIT 1
     """, (session["user_id"],)).fetchone()
+
     conn.close()
 
-    # Si encontramos el viaje, vamos a la pantalla de control
     if viaje:
         return render_template("conductor.html", viaje=dict(viaje))
-    
-    # SI NO HAY VIAJE (aquí es donde está "atorado" Juan), lo mandamos a la lista
-    return redirect(url_for("viajes_disponibles"))
+    else:
+        return render_template("conductor.html", viaje=None)
+
 @app.route("/aceptar_viaje/<int:viaje_id>")
 def aceptar_viaje(viaje_id):
     user_id = session.get("user_id")
