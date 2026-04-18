@@ -43,12 +43,35 @@ document.addEventListener("DOMContentLoaded", function() {
         L.marker([latO, lngO]).addTo(map);
         L.marker([latD, lngD]).addTo(map);
 
-        var ruta = L.polyline([[latO, lngO], [latD, lngD]]).addTo(map);
-        map.fitBounds(ruta.getBounds());
+        // 🔥 RUTA REAL CON OSRM
+        fetch(`https://router.project-osrm.org/route/v1/driving/${lngO},${latO};${lngD},${latD}?overview=full&geometries=geojson`)
+        .then(res => res.json())
+        .then(data => {
+
+            if (data.routes && data.routes.length > 0) {
+
+                let coords = data.routes[0].geometry.coordinates;
+
+                let ruta = coords.map(c => [c[1], c[0]]);
+
+                let polyline = L.polyline(ruta, {
+                    color: 'blue',
+                    weight: 5
+                }).addTo(map);
+
+                map.fitBounds(polyline.getBounds());
+
+            } else {
+                console.log("No se encontró ruta");
+            }
+
+        })
+        .catch(err => console.log("Error ruta:", err));
     }
 
     {% endfor %}
 
 });
 </script>
+
 {% endblock %}
