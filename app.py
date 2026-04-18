@@ -202,35 +202,60 @@ def conductor():
 
 @app.route("/aceptar_viaje/<int:viaje_id>")
 def aceptar_viaje(viaje_id):
-    user_id = session.get("user_id")
+
+    # 🔒 0. Validar sesión
+    if not session.get("user_id") or "conductor" not in str(session.get("tipo", "")).lower():
+        return redirect(url_for("login"))
+
+    user_id = session["user_id"]
     conn = get_db()
-    
-    # 1. VALIDACIÓN: ¿El conductor ya está ocupado con otro viaje?
-    ocupado = conn.execute("""
-        SELECT id FROM viajes 
-        WHERE conductor_id = ? AND estado NOT IN ('finalizado', 'cancelado')
-    """, (user_id,)).fetchone()
 
-    if ocupado:
-        conn.close()
-        # Lo mandamos de vuelta a la lista con un mensaje de error
-        return redirect(url_for("viajes_disponibles", error="Ya tienes un viaje activo. Termínalo primero."))
-
-    # 2. PROCESO DE ACEPTAR EL VIAJE (Si está libre)
     try:
+        # 🔴 1. Verificar si ya tiene viaje activo
+        ocupado = conn.execute("""
+            SELECT id FROM viajes 
+            WHERE conductor_id = ? 
+            AND estado IN ('aceptado', 'en_camino', 'recogido')
+        """, (user_id,)).fetchone()
+
+        if ocupado:
+            return redirect(url_for(
+                "viajes_disponibles",
+                error="Ya tienes un viaje activo. Termínalo primero."
+            ))
+
+        # 🔴 2. Verificar que el viaje siga disponible
+        viaje = conn.execute("""
+            SELECT id FROM viajes 
+            WHERE id = ? AND estado = 'pendiente'
+        """, (viaje_id,)).fetchone()
+
+        if not viaje:
+            return redirect(url_for(
+                "viajes_disponibles",
+                error="Este viaje ya fue tomado por otro conductor"
+            ))
+
+        # 🟢 3. Aceptar viaje
         conn.execute("""
             UPDATE viajes 
             SET conductor_id = ?, estado = 'aceptado' 
-            WHERE id = ? AND estado = 'pendiente'
+            WHERE id = ?
         """, (user_id, viaje_id))
+
         conn.commit()
+
     except Exception as e:
-        print(f"Error al aceptar viaje: {e}")
+        print("ERROR aceptar_viaje:", e)
+        return redirect(url_for(
+            "viajes_disponibles",
+            error="Error al aceptar el viaje"
+        ))
+
     finally:
         conn.close()
-    
-    return redirect(url_for("conductor"))
 
+    return redirect(url_for("conductor"))
 @app.route("/cambiar_estado_viaje/<int:id>/<nuevo_estado>")
 def cambiar_estado_viaje(id, nuevo_estado):
     if session.get("tipo") != "conductor":

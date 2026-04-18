@@ -3,18 +3,27 @@
 {% block content %}
 
 <h2>Viajes Disponibles</h2>
-
 {% if viajes %}
     {% for viaje in viajes %}
-        <div style="border:1px solid #ccc; margin:10px; padding:10px;">
-            <p>{{ viaje.origen }} → {{ viaje.destino }}</p>
+        <div style="border:1px solid #ccc; margin:10px; padding:10px; border-radius:8px;">
+
+            <p><b>{{ viaje.origen }} → {{ viaje.destino }}</b></p>
+
+            <!-- MAPA -->
+            <div id="map_{{ viaje.id }}" style="height:200px; margin-bottom:10px;"></div>
+
+            <!-- BOTÓN -->
+            <a href="{{ url_for('aceptar_viaje', viaje_id=viaje.id) }}">
+                <button style="background:#27ae60;color:white;padding:10px;border:none;border-radius:5px;width:100%;">
+                    ACEPTAR VIAJE
+                </button>
+            </a>
+
         </div>
-        <div id="map_{{ viaje.id }}" style="height:200px;"></div>
     {% endfor %}
 {% else %}
     <p>No hay viajes</p>
 {% endif %}
-
 
 <script>
 document.addEventListener("DOMContentLoaded", function() {
