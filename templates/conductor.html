@@ -6,17 +6,13 @@
 
 <audio id="sonidoNotificacion" src="{{ url_for('static', filename='alerta.mp3') }}" preload="auto"></audio>
 
-<div class="card" style="text-align: center;">
-    <h2>Panel del Conductor 🏍️</h2>
-    <p style="color: #7f8c8d;">
-        Estado actual: 
-        <strong id="status-text">En línea 🟢</strong>
+<div class="card" style="text-align: center; padding: 10px; margin-bottom: 10px;">
+    <h2 style="margin: 5px 0;">Panel del Conductor 🏍️</h2>
+    <p style="color: #7f8c8d; margin: 5px 0;">
+        Estado: <strong id="status-text">En línea 🟢</strong>
     </p>
-
-    <p style="display:none;">Estado interno: <span id="estado">{{ viaje.estado if viaje else '' }}</span></p>
-    
-    <a href="/viajes_disponibles">
-        <button style="background: #3498db; width: 100%; padding: 12px; border: none; color: white; border-radius: 5px; font-weight: bold; cursor: pointer;">
+    <a href="/viajes_disponibles" style="text-decoration: none;">
+        <button style="background: #3498db; width: 100%; padding: 10px; border: none; color: white; border-radius: 5px; font-weight: bold; cursor: pointer; font-size: 16px;">
             🔎 Ver viajes disponibles
         </button>
     </a>
@@ -26,32 +22,32 @@
     🚨 NUEVO VIAJE DISPONIBLE 🚨 <br> <small>(Toca aquí para silenciar)</small>
 </div>
 
-<div class="card">
-    <h3 style="text-align: center; margin-bottom: 15px;">Control de Viaje Activo</h3>
+<div class="card" style="padding: 10px;">
+    <h3 style="text-align: center; margin-bottom: 10px;">Control de Viaje Activo</h3>
     
     {% if viaje %}
-    <div id="map_conductor" style="height: 350px; width: 100%; border-radius: 10px; margin-bottom: 20px; border: 2px solid #2c3e50;"></div>
+    <div id="map_conductor" style="height: 60vh; width: 100%; border-radius: 12px; margin-bottom: 15px; border: 2px solid #2c3e50; z-index: 1;"></div>
     {% else %}
-    <div style="text-align: center; padding: 20px; border: 1px dashed #ccc; border-radius: 10px; color: #7f8c8d;">
+    <div style="text-align: center; padding: 30px; border: 2px dashed #ccc; border-radius: 10px; color: #7f8c8d; margin-bottom: 15px;">
         <p>No hay un viaje activo seleccionado.</p>
     </div>
     {% endif %}
 
-    <div style="display: flex; flex-direction: column; gap: 12px;">
+    <div style="display: flex; flex-direction: column; gap: 10px;">
         <button onclick="actualizarEstado('en_camino', '{{ viaje.id if viaje else '' }}')" 
-                style="background:#f39c12; color:white; padding:18px; border:none; border-radius:8px; font-weight:bold;"
+                style="background:#f39c12; color:white; padding:15px; border:none; border-radius:8px; font-weight:bold; font-size: 16px;"
                 {% if not viaje or viaje.estado != 'aceptado' %} disabled {% endif %}>
             En Camino al Cliente 🛵
         </button>
         
         <button onclick="actualizarEstado('recogido', '{{ viaje.id if viaje else '' }}')" 
-                style="background:#9b59b6; color:white; padding:18px; border:none; border-radius:8px; font-weight:bold;"
+                style="background:#9b59b6; color:white; padding:15px; border:none; border-radius:8px; font-weight:bold; font-size: 16px;"
                 {% if not viaje or viaje.estado != 'en_camino' %} disabled {% endif %}>
             Cliente Recogido ✅
         </button>
         
         <button onclick="actualizarEstado('finalizado', '{{ viaje.id if viaje else '' }}')" 
-                style="background:#e74c3c; color:white; padding:18px; border:none; border-radius:8px; font-weight:bold;"
+                style="background:#e74c3c; color:white; padding:15px; border:none; border-radius:8px; font-weight:bold; font-size: 16px;"
                 {% if not viaje or viaje.estado != 'recogido' %} disabled {% endif %}>
             Finalizar Viaje 🏁
         </button>
@@ -70,6 +66,18 @@ button:disabled { background: #bdc3c7 !important; cursor: not-allowed; opacity: 
 </style>
 
 <script>
+// --- CONFIGURACIÓN GLOBAL DE ICONOS PARA EVITAR QUE DESAPAREZCAN ---
+const iconVerde = L.icon({
+    iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-green.png',
+    shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/0.7.7/images/marker-shadow.png',
+    iconSize: [25, 41], iconAnchor: [12, 41], popupAnchor: [1, -34], shadowSize: [41, 41]
+});
+
+const iconRojo = L.icon({
+    iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-red.png',
+    shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/0.7.7/images/marker-shadow.png',
+    iconSize: [25, 41], iconAnchor: [12, 41], popupAnchor: [1, -34], shadowSize: [41, 41]
+});
 
 // --- 1. MAPA ---
 {% if viaje %}
@@ -80,11 +88,13 @@ document.addEventListener("DOMContentLoaded", function() {
         var latD = {{ viaje.lat_destino or 0 }};
         var lngD = {{ viaje.lng_destino or 0 }};
 
-        if (!latO || !latD) return;
+        if (latO === 0 || latD === 0) return;
 
         var map = L.map('map_conductor').setView([latO, lngO], 15);
 
-        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            attribution: '© OpenStreetMap'
+        }).addTo(map);
 
         L.Routing.control({
             waypoints: [
@@ -92,16 +102,21 @@ document.addEventListener("DOMContentLoaded", function() {
                 L.latLng(latD, lngD)
             ],
             lineOptions: {
-                styles: [{color: 'blue', opacity: 0.7, weight: 6}]
+                styles: [{color: '#2980b9', opacity: 0.8, weight: 6}]
             },
             addWaypoints: false,
             draggableWaypoints: false,
             show: false,
             createMarker: function(i, wp) {
-                return L.marker(wp.latLng)
-                    .bindPopup(i === 0 ? "Recoger Cliente" : "Destino del Viaje");
+                // ✅ AQUÍ ASIGNAMOS LOS ICONOS PARA QUE SÍ SE VEAN
+                return L.marker(wp.latLng, {
+                    icon: (i === 0) ? iconVerde : iconRojo
+                }).bindPopup(i === 0 ? "📍 Recoger Cliente" : "🏁 Destino del Viaje");
             }
         }).addTo(map);
+
+        // Ajuste para móviles
+        setTimeout(() => map.invalidateSize(), 500);
 
     } catch (e) {
         console.error("Error mapa:", e);
@@ -109,13 +124,12 @@ document.addEventListener("DOMContentLoaded", function() {
 });
 {% endif %}
 
-// --- 2. ESTADO ---
+// --- 2. FUNCIONES DE ESTADO Y GPS (Mantener igual) ---
 function actualizarEstado(nuevoEstado, viajeId) {
     if (!viajeId || viajeId === "" || viajeId === "None") {
         alert("No hay viaje activo.");
         return;
     }
-
     fetch(`/cambiar_estado_viaje/${viajeId}/${nuevoEstado}`)
     .then(res => {
         if (res.ok) {
@@ -126,15 +140,13 @@ function actualizarEstado(nuevoEstado, viajeId) {
     });
 }
 
-// --- 3. GPS ---
 if (navigator.geolocation) {
     navigator.geolocation.watchPosition(pos => {
         let fd = new FormData();
         fd.append("lat", pos.coords.latitude);
         fd.append("lng", pos.coords.longitude);
-
         fetch("/actualizar_ubicacion", { method: "POST", body: fd });
-    });
+    }, null, { enableHighAccuracy: true });
 }
 
 // --- 4. ALERTA NUEVOS VIAJES ---
@@ -145,9 +157,7 @@ let ultimoId = 0;
 function iniciarAlerta() {
     if (alertaActiva) return;
     alertaActiva = true;
-
     document.getElementById("alerta-viaje").style.display = "block";
-
     const sonido = document.getElementById("sonidoNotificacion");
     intervaloSonido = setInterval(() => sonido.play().catch(()=>{}), 2000);
 }
@@ -173,7 +183,6 @@ setInterval(() => {
 
 // --- 5. DETECTAR CANCELACIÓN ---
 let ultimoCancelado = 0;
-
 setInterval(() => {
     fetch(`/verificar_cancelaciones?ultimo_id=${ultimoCancelado}`)
     .then(r => r.json())
@@ -185,7 +194,5 @@ setInterval(() => {
         }
     });
 }, 4000);
-
 </script>
-
 {% endblock %}
