@@ -1,77 +1,95 @@
 {% extends "base.html" %}
 
 {% block content %}
+<div class="container">
+    <h2 style="text-align: center; margin-bottom: 20px;">Viajes Disponibles 🏍️</h2>
 
-<h2>Viajes Disponibles</h2>
-{% if viajes %}
-    {% for viaje in viajes %}
-        <div style="border:1px solid #ccc; margin:10px; padding:10px; border-radius:8px;">
+    {% if viajes %}
+        {% for viaje in viajes %}
+            <div class="card" style="margin-bottom: 25px; padding: 15px;">
+                <p style="font-size: 1.1rem; margin-bottom: 10px;">
+                    <i class="fas fa-map-marker-alt" style="color: #27ae60;"></i> <b>{{ viaje.origen }}</b> 
+                    <br>
+                    <i class="fas fa-flag-checkered" style="color: #e74c3c;"></i> <b>{{ viaje.destino }}</b>
+                </p>
 
-            <p><b>{{ viaje.origen }} → {{ viaje.destino }}</b></p>
+                <div id="map_{{ viaje.id }}" style="height: 250px; border-radius: 10px; border: 1px solid #ddd; margin-bottom: 15px; z-index: 1;"></div>
 
-            <!-- MAPA -->
-            <div id="map_{{ viaje.id }}" style="height:200px; margin-bottom:10px;"></div>
-
-            <!-- BOTÓN -->
-            <a href="{{ url_for('aceptar_viaje', viaje_id=viaje.id) }}">
-                <button style="background:#27ae60;color:white;padding:10px;border:none;border-radius:5px;width:100%;">
-                    ACEPTAR VIAJE
-                </button>
-            </a>
-
+                <a href="{{ url_for('aceptar_viaje', viaje_id=viaje.id) }}" style="text-decoration: none;">
+                    <button style="background: #27ae60; color: white; padding: 15px; border: none; border-radius: 8px; width: 100%; font-weight: bold; font-size: 1.1rem; cursor: pointer; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">
+                        ACEPTAR VIAJE ✅
+                    </button>
+                </a>
+            </div>
+        {% endfor %}
+    {% else %}
+        <div class="card" style="text-align: center; padding: 40px;">
+            <p style="color: #7f8c8d; font-size: 1.2rem;">No hay viajes disponibles en este momento. 😴</p>
         </div>
-    {% endfor %}
-{% else %}
-    <p>No hay viajes</p>
-{% endif %}
+    {% endif %}
+</div>
 
 <script>
 document.addEventListener("DOMContentLoaded", function() {
+    // Definimos los iconos una sola vez
+    const iconGreen = L.icon({
+        iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-green.png',
+        shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/0.7.7/images/marker-shadow.png',
+        iconSize: [25, 41], iconAnchor: [12, 41], popupAnchor: [1, -34], shadowSize: [41, 41]
+    });
+
+    const iconRed = L.icon({
+        iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-red.png',
+        shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/0.7.7/images/marker-shadow.png',
+        iconSize: [25, 41], iconAnchor: [12, 41], popupAnchor: [1, -34], shadowSize: [41, 41]
+    });
 
     {% for viaje in viajes %}
+    (function() {
+        const latO = {{ viaje.lat or 0 }};
+        const lngO = {{ viaje.lng or 0 }};
+        const latD = {{ viaje.lat_destino or 0 }};
+        const lngD = {{ viaje.lng_destino or 0 }};
+        const mapId = 'map_{{ viaje.id }}';
 
-    var latO = {{ viaje.lat or 0 }};
-    var lngO = {{ viaje.lng or 0 }};
-    var latD = {{ viaje.lat_destino or 0 }};
-    var lngD = {{ viaje.lng_destino or 0 }};
+        if (latO && latD) {
+            const map = L.map(mapId, {
+                dragging: !L.Browser.mobile, // Desactivar arrastre en móvil para permitir scroll
+                scrollWheelZoom: false
+            }).setView([latO, lngO], 13);
 
-    if (latO && latD) {
-        var map = L.map('map_{{ viaje.id }}').setView([latO, lngO], 13);
+            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                attribution: '© OpenStreetMap'
+            }).addTo(map);
 
-        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
+            // Marcadores con iconos de color
+            L.marker([latO, lngO], {icon: iconGreen}).addTo(map).bindPopup("Recoger aquí");
+            L.marker([latD, lngD], {icon: iconRed}).addTo(map).bindPopup("Destino");
 
-        L.marker([latO, lngO]).addTo(map);
-        L.marker([latD, lngD]).addTo(map);
+            // Trazado de ruta real
+            fetch(`https://router.project-osrm.org/route/v1/driving/${lngO},${latO};${lngD},${latD}?overview=full&geometries=geojson`)
+            .then(res => res.json())
+            .then(data => {
+                if (data.routes && data.routes.length > 0) {
+                    const coords = data.routes[0].geometry.coordinates;
+                    const ruta = coords.map(c => [c[1], c[0]]);
 
-        // 🔥 RUTA REAL CON OSRM
-        fetch(`https://router.project-osrm.org/route/v1/driving/${lngO},${latO};${lngD},${latD}?overview=full&geometries=geojson`)
-        .then(res => res.json())
-        .then(data => {
+                    const polyline = L.polyline(ruta, {
+                        color: '#3498db',
+                        weight: 6,
+                        opacity: 0.8
+                    }).addTo(map);
 
-            if (data.routes && data.routes.length > 0) {
+                    map.fitBounds(polyline.getBounds(), {padding: [20, 20]});
+                }
+            })
+            .catch(err => console.error("Error en ruta:", err));
 
-                let coords = data.routes[0].geometry.coordinates;
-
-                let ruta = coords.map(c => [c[1], c[0]]);
-
-                let polyline = L.polyline(ruta, {
-                    color: 'blue',
-                    weight: 5
-                }).addTo(map);
-
-                map.fitBounds(polyline.getBounds());
-
-            } else {
-                console.log("No se encontró ruta");
-            }
-
-        })
-        .catch(err => console.log("Error ruta:", err));
-    }
-
+            // Forzar renderizado correcto
+            setTimeout(() => map.invalidateSize(), 500);
+        }
+    })();
     {% endfor %}
-
 });
 </script>
-
 {% endblock %}
