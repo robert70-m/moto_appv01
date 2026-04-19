@@ -1,10 +1,21 @@
-<!DOCTYPE html>
+<!DOCTYPE html> 
 <html lang="es">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>{% block title %}Moto App 🏍️{% endblock %}</title>
 
+    <!-- ICONO APP -->
+    <link rel="icon" href="{{ url_for('static', filename='icon.png') }}">
+    <link rel="apple-touch-icon" href="{{ url_for('static', filename='icon.png') }}">
+
+    <!-- COLOR APP -->
+    <meta name="theme-color" content="#2c3e50">
+
+    <!-- MANIFEST (modo app) -->
+    <link rel="manifest" href="{{ url_for('static', filename='manifest.json') }}">
+
+    <!-- LIBRERÍAS -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
@@ -47,12 +58,11 @@
         }
 
         .container {
-            padding: 10px; /* Reducido para móviles */
-            max-width: 800px; /* Aumentado para mejor visualización */
+            padding: 10px;
+            max-width: 800px;
             margin: auto;
         }
 
-        /* Clase especial para que el mapa ocupe todo el ancho */
         .full-width-container {
             max-width: 100% !important;
             padding: 5px !important;
@@ -126,6 +136,14 @@
     </div>
 </header>
 
+
+<div style="text-align:center; padding:10px; background:#fff;">
+📲 Para usar como app, agrega a pantalla de inicio
+</div>
+
+<main class="container {% if request.path == '/mapa_conductor' %}full-width-container{% endif %}">
+
+
 <main class="container {% if request.path == '/mapa_conductor' %}full-width-container{% endif %}">
     {% block content %}{% endblock %}
 </main>
@@ -142,5 +160,6 @@ window.onclick = function(e) {
     }
 };
 </script>
+
 </body>
 </html>
