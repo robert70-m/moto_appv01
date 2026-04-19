@@ -24,7 +24,6 @@
             margin: 0;
             min-height: 100vh;
             color: #333;
-            font-size: 16px;
         }
 
         .header {
@@ -48,14 +47,20 @@
         }
 
         .container {
-            padding: 15px;
-            max-width: 600px;
+            padding: 10px; /* Reducido para móviles */
+            max-width: 800px; /* Aumentado para mejor visualización */
             margin: auto;
+        }
+
+        /* Clase especial para que el mapa ocupe todo el ancho */
+        .full-width-container {
+            max-width: 100% !important;
+            padding: 5px !important;
         }
 
         .card {
             background: white;
-            padding: 20px;
+            padding: 15px;
             border-radius: 15px;
             box-shadow: 0 5px 15px rgba(0,0,0,0.1);
             margin-bottom: 20px;
@@ -73,161 +78,55 @@
             border-radius: 30px;
             font-weight: bold;
             z-index: 3000;
-            box-shadow: 0 4px 12px rgba(0,0,0,0.3);
             text-align: center;
-            min-width: 250px;
         }
 
-        .user-menu {
-            position: relative;
-            display: flex;
-            gap: 10px;
-        }
-
-        .nav-link {
-            color: white;
-            text-decoration: none;
-            font-size: 14px;
-            padding: 8px 12px;
-            border-radius: 5px;
-            background: rgba(255,255,255,0.1);
-        }
-
-        .user-btn {
-            background: #34495e;
-            color: white;
-            border: none;
-            padding: 8px 15px;
-            border-radius: 20px;
-            cursor: pointer;
-            font-size: 14px;
-            display: flex;
-            align-items: center;
-            gap: 8px;
-        }
-
+        .user-menu { display: flex; gap: 10px; }
+        .nav-link { color: white; text-decoration: none; font-size: 14px; padding: 8px 12px; border-radius: 5px; background: rgba(255,255,255,0.1); }
+        .user-btn { background: #34495e; color: white; border: none; padding: 8px 15px; border-radius: 20px; cursor: pointer; display: flex; align-items: center; gap: 8px; }
+        
         .dropdown {
             display: none;
             position: absolute;
-            right: 0;
-            top: 40px;
+            right: 20px;
+            top: 55px;
             background: white;
             min-width: 160px;
             border-radius: 10px;
             box-shadow: 0 5px 20px rgba(0,0,0,0.2);
-            overflow: hidden;
             z-index: 2500;
         }
 
-        .dropdown a {
-            display: block;
-            padding: 12px 15px;
-            color: #333;
-            text-decoration: none;
-            font-size: 14px;
-            border-bottom: 1px solid #f0f0f0;
-        }
+        .dropdown a { display: block; padding: 12px 15px; color: #333; text-decoration: none; border-bottom: 1px solid #f0f0f0; }
 
-        .dropdown a:hover {
-            background: #f8f9fa;
-        }
-
-        input[type="text"],
-        input[type="password"],
-        input[type="email"],
-        select {
-            width: 100%;
-            padding: 12px;
-            margin: 10px 0;
-            border: 1px solid #ddd;
-            border-radius: 8px;
-            box-sizing: border-box;
-            font-size: 16px;
-        }
-
-        /* =========================
-           📱 OPTIMIZACIÓN MÓVIL
-        ========================= */
         @media (max-width: 768px) {
-
-            body {
-                font-size: 18px;
-            }
-
-            .header-title {
-                font-size: 1rem;
-            }
-
-            .container {
-                padding: 10px;
-            }
-
-            .card {
-                padding: 15px;
-                border-radius: 12px;
-            }
-
-            /* 🔘 BOTONES MÁS GRANDES */
-            button,
-            .user-btn,
-            .nav-link,
-            input[type="submit"],
-            a {
-                font-size: 18px !important;
-            }
-
-            .nav-link {
-                padding: 10px 14px;
-            }
-
-            .user-btn {
-                padding: 10px 16px;
-            }
-
-            /* 🧠 INPUTS MÁS FÁCILES DE TOCAR */
-            input,
-            select {
-                font-size: 18px !important;
-                padding: 14px !important;
-            }
-
-            /* 📌 TOAST MÁS LEGIBLE */
-            #toast {
-                font-size: 16px;
-                width: 90%;
-                min-width: unset;
-            }
+            body { font-size: 18px; }
+            .header-title { font-size: 1rem; }
+            button, .user-btn, .nav-link, a { font-size: 18px !important; }
         }
     </style>
 </head>
-
 <body>
 
 <div id="toast"></div>
 
 <header class="header">
     <a href="/" class="header-title">Moto App 🏍️</a>
-
     <div class="user-menu">
         {% if session.get('user_id') %}
             <button onclick="toggleMenu()" class="user-btn">
-                <i class="fas fa-user-circle"></i>
-                {{ session.get('nombre', 'Usuario') }}
+                <i class="fas fa-user-circle"></i> {{ session.get('nombre', 'Usuario') }}
             </button>
-
             <div id="dropdown" class="dropdown">
-                <a href="/logout" style="color: var(--danger);">
-                    <i class="fas fa-sign-out-alt"></i> Cerrar sesión
-                </a>
+                <a href="/logout" style="color: var(--danger);"><i class="fas fa-sign-out-alt"></i> Cerrar sesión</a>
             </div>
         {% else %}
             <a href="{{ url_for('login') }}" class="nav-link">Ingresar</a>
-            <a href="{{ url_for('registro') }}" class="nav-link" style="background: var(--accent);">Registrar</a>
         {% endif %}
     </div>
 </header>
 
-<main class="container">
+<main class="container {% if request.path == '/mapa_conductor' %}full-width-container{% endif %}">
     {% block content %}{% endblock %}
 </main>
 
@@ -236,37 +135,12 @@ function toggleMenu() {
     const menu = document.getElementById("dropdown");
     menu.style.display = menu.style.display === "block" ? "none" : "block";
 }
-
-function mostrarToast(mensaje, tipo = 'error') {
-    const toast = document.getElementById("toast");
-    toast.innerText = mensaje;
-    toast.style.background = tipo === 'error' ? '#e74c3c' : '#27ae60';
-    toast.style.display = 'block';
-
-    setTimeout(() => {
-        toast.style.display = 'none';
-    }, 4000);
-}
-
 window.onclick = function(e) {
     if (!e.target.matches('.user-btn') && !e.target.closest('.user-btn')) {
         const dropdown = document.getElementById("dropdown");
         if (dropdown) dropdown.style.display = "none";
     }
 };
-
-window.onload = function() {
-    const params = new URLSearchParams(window.location.search);
-
-    if (params.get("error")) {
-        mostrarToast(params.get("error"), "error");
-    }
-
-    if (params.get("msg") === "viaje_terminado") {
-        mostrarToast("¡Viaje finalizado con éxito!", "success");
-    }
-};
 </script>
-
 </body>
 </html>

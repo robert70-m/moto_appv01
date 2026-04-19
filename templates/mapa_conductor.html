@@ -4,77 +4,46 @@
 <link rel="stylesheet" href="https://unpkg.com/leaflet-routing-machine@latest/dist/leaflet-routing-machine.css" />
 <script src="https://unpkg.com/leaflet-routing-machine@latest/dist/leaflet-routing-machine.js"></script>
 
+<div class="card" style="height: 80vh; display: flex; flex-direction: column; padding: 5px;">
+    <h3 style="text-align: center; margin: 5px;">Viajes en tiempo real 🏍️</h3>
+    <div id="map" style="flex-grow: 1; border-radius: 10px; z-index: 1;"></div>
+</div>
+
 <style>
-    /* Forzamos que el contenedor del mapa use el máximo espacio disponible */
-    .map-container {
-        padding: 10px;
-        height: calc(100vh - 100px); /* Ajusta según el tamaño de tu navbar */
-        display: flex;
-        flex-direction: column;
-    }
-
-    #map {
-        flex-grow: 1;
-        width: 100%;
-        border-radius: 15px;
-        border: 2px solid #2c3e50;
-        z-index: 1;
-    }
-
-    /* Ocultar el panel de instrucciones de la ruta */
     .leaflet-routing-container { display: none !important; }
 </style>
-
-<div class="map-container">
-    <h2 style="text-align: center; margin-bottom: 5px;">Viajes Disponibles 🏍️</h2>
-    <div id="map"></div>
-</div>
 
 <script>
 let map;
 let rutasActivas = [];
-let marcadoresActivos = [];
 let viajeEnCurso = false;
 
-// ✅ ICONOS CORREGIDOS (Usa URLs directas de imágenes o marcadores estándar de Leaflet)
-const iconCliente = L.icon({
+// 🟢 CONFIGURACIÓN DE ICONOS
+const iconVerde = L.icon({
     iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-green.png',
     shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/0.7.7/images/marker-shadow.png',
-    iconSize: [25, 41],
-    iconAnchor: [12, 41],
-    popupAnchor: [1, -34],
-    shadowSize: [41, 41]
+    iconSize: [25, 41], iconAnchor: [12, 41], popupAnchor: [1, -34], shadowSize: [41, 41]
 });
 
-const iconDestino = L.icon({
+const iconRojo = L.icon({
     iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-red.png',
     shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/0.7.7/images/marker-shadow.png',
-    iconSize: [25, 41],
-    iconAnchor: [12, 41],
-    popupAnchor: [1, -34],
-    shadowSize: [41, 41]
+    iconSize: [25, 41], iconAnchor: [12, 41], popupAnchor: [1, -34], shadowSize: [41, 41]
 });
 
 function initMap() {
-    // Coordenadas por defecto (puedes ajustarlas a tu zona de trabajo)
     map = L.map('map').setView([16.75, -96.67], 13);
-
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
         attribution: '© OpenStreetMap'
     }).addTo(map);
 
     if (navigator.geolocation) {
         navigator.geolocation.getCurrentPosition(pos => {
-            const lat = pos.coords.latitude;
-            const lng = pos.coords.longitude;
-            map.setView([lat, lng], 14);
+            map.setView([pos.coords.latitude, pos.coords.longitude], 14);
         });
     }
-
-    // 🔥 Crucial para móviles: fuerza el redibujado
-    setTimeout(() => {
-        map.invalidateSize();
-    }, 400);
+    // Corregir tamaño al cargar
+    setTimeout(() => map.invalidateSize(), 600);
 }
 
 function cargarViajes() {
@@ -83,34 +52,28 @@ function cargarViajes() {
     fetch("/api_viajes")
     .then(res => res.json())
     .then(data => {
-        // Limpiar elementos previos
-        marcadoresActivos.forEach(m => map.removeLayer(m));
+        // Limpiar rutas previas
         rutasActivas.forEach(r => map.removeControl(r));
-        marcadoresActivos = [];
         rutasActivas = [];
 
         data.viajes.forEach(v => {
             if (v.lat && v.lng && v.lat_destino && v.lng_destino && v.estado === 'pendiente') {
                 
-                // 🛣️ RUTA (Routing Machine)
                 let ruta = L.Routing.control({
                     waypoints: [
                         L.latLng(v.lat, v.lng),
                         L.latLng(v.lat_destino, v.lng_destino)
                     ],
-                    // Importante: createMarker personalizado para usar TUS iconos
-                    createMarker: function(i, waypoint, n) {
-                        const icon = (i === 0) ? iconCliente : iconDestino;
-                        const label = (i === 0) ? `<b>Viaje #${v.id}</b><br>📍 Recoger aquí<br><br><a href="/aceptar_viaje/${v.id}" onclick="setViajeActivo()" style="background:#27ae60; color:white; padding:8px; border-radius:5px; text-decoration:none; display:block; text-align:center;">Aceptar ✅</a>` : "🏁 Destino Final";
+                    createMarker: function(i, wp) {
+                        const icon = (i === 0) ? iconVerde : iconRojo;
+                        const popupText = (i === 0) 
+                            ? `<b>Recoger aquí</b><br><a href="/aceptar_viaje/${v.id}" onclick="viajeEnCurso=true" style="background:green; color:white; padding:8px; border-radius:5px; display:block; text-align:center; margin-top:5px; text-decoration:none;">ACEPTAR ✅</a>`
+                            : `<b>Destino</b>`;
                         
-                        return L.marker(waypoint.latLng, {
-                            draggable: false,
-                            icon: icon
-                        }).bindPopup(label);
+                        return L.marker(wp.latLng, { icon: icon }).bindPopup(popupText);
                     },
                     addWaypoints: false,
                     draggableWaypoints: false,
-                    fitSelectedRoutes: false,
                     show: false,
                     lineOptions: {
                         styles: [{ color: '#3498db', opacity: 0.7, weight: 5 }]
@@ -121,10 +84,6 @@ function cargarViajes() {
             }
         });
     });
-}
-
-function setViajeActivo() {
-    viajeEnCurso = true;
 }
 
 document.addEventListener("DOMContentLoaded", function() {
