@@ -30,7 +30,6 @@
         <button type="submit" style="margin-top: 20px;">Pedir viaje 🚀</button>
     </form>
 
-    <!-- 🔥 BOTÓN CANCELAR -->
     {% if viaje_id %}
     <a href="{{ url_for('cancelar_viaje', id=viaje_id) }}"
        onclick="return confirm('¿Seguro que deseas cancelar el viaje?')">
@@ -39,9 +38,7 @@
         </button>
     </a>
     {% endif %}
-
 </div> 
-
 
 <div id="status_conductor" style="display:none; padding:15px; background:#d4edda; border-radius:10px; margin: 10px 0; border: 1px solid #c3e6cb;">
     <p style="margin:0; color: #155724;">✅ <b>¡Viaje Aceptado!</b></p>
@@ -74,10 +71,37 @@
 
 <script>
 document.addEventListener("DOMContentLoaded", function() {
+
     let map = null;
     let marcadorUsuario = null;
     let marcadorDestino = null;
     let primeraVez = true;
+
+    let alertaMostrada = false;
+
+    function alertaConductorCerca() {
+        let alerta = document.createElement("div");
+
+        alerta.innerHTML = "🚨 El conductor está cerca";
+        alerta.style.position = "fixed";
+        alerta.style.top = "80px";
+        alerta.style.left = "50%";
+        alerta.style.transform = "translateX(-50%)";
+        alerta.style.background = "#27ae60";
+        alerta.style.color = "white";
+        alerta.style.padding = "15px 25px";
+        alerta.style.borderRadius = "30px";
+        alerta.style.fontWeight = "bold";
+        alerta.style.fontSize = "18px";
+        alerta.style.zIndex = "9999";
+        alerta.style.boxShadow = "0 5px 15px rgba(0,0,0,0.3)";
+
+        document.body.appendChild(alerta);
+
+        setTimeout(() => {
+            alerta.remove();
+        }, 5000);
+    }
 
     function initMap(lat, lng) {
         if (map) return; 
@@ -140,11 +164,28 @@ document.addEventListener("DOMContentLoaded", function() {
         fetch(`/api_estado_viaje/${idViaje}`)
             .then(res => res.json())
             .then(data => {
+
                 if (data.estado === 'finalizado') {
                     mostrarToast("¡Viaje finalizado!", "success");
                     setTimeout(() => window.location.href = "/cliente", 1500);
                 } 
+
+                else if (data.estado === 'cerca') {
+
+                    if (!alertaMostrada) {
+                        alertaConductorCerca();
+                        alertaMostrada = true;
+                    }
+
+                    document.getElementById("status_conductor").style.display = "block";
+                    document.getElementById("nombre_en_pantalla").innerText = data.conductor;
+                    document.getElementById("texto_estado").innerText = "Cerca de ti 🚨";
+                }
+
                 else if (['aceptado','en_camino','recogido'].includes(data.estado)) {
+
+                    alertaMostrada = false;
+
                     document.getElementById("status_conductor").style.display = "block";
                     document.getElementById("nombre_en_pantalla").innerText = data.conductor;
                     document.getElementById("texto_estado").innerText = data.estado;
@@ -154,6 +195,7 @@ document.addEventListener("DOMContentLoaded", function() {
 
     setInterval(vigilarViaje, 3000);
     vigilarViaje();
+
 });
 </script>
 
