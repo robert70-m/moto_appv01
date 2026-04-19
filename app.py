@@ -34,6 +34,12 @@ def crear_tablas():
     conn.close()
 
 crear_tablas()
+# -------------------------------------------------------------
+from flask import send_file
+
+@app.route("/descargar")
+def descargar():
+    return send_file("app.apk", as_attachment=True)
 
 # ---------------------- LOGIN / REGISTRO ----------------------
 @app.route("/", methods=["GET", "POST"])
