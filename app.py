@@ -35,11 +35,17 @@ def crear_tablas():
 
 crear_tablas()
 # -------------------------------------------------------------
-from flask import send_file
 
+from flask import send_file
 @app.route("/descargar")
 def descargar():
-    return send_file("app.apk", as_attachment=True)
+    import os
+    ruta = os.path.join(BASE_DIR, "app.apk")
+
+    if not os.path.exists(ruta):
+        return f"No existe el archivo en: {ruta}"
+
+    return send_file(ruta, as_attachment=True)
 
 # ---------------------- LOGIN / REGISTRO ----------------------
 @app.route("/", methods=["GET", "POST"])
