@@ -5,13 +5,32 @@
     <h2>Registrar Conductor 🏍️</h2>
 
     <form method="POST">
-        <input type="text" name="nombre" placeholder="Nombre" required>
+        <label style="font-size: 12px; color: #7f8c8d;">Datos Personales:</label>
+        <input type="text" name="nombre" placeholder="Nombre completo" required>
         <input type="text" name="telefono" placeholder="Teléfono" required>
         <input type="password" name="password" placeholder="Contraseña" required>
 
-        <button type="submit" style="background:#27ae60; color:white; padding:10px; width:100%;">
-            Registrar
+        <hr style="border: 0; border-top: 1px solid #eee; margin: 20px 0;">
+        
+        <label style="font-size: 12px; color: #7f8c8d;">Datos de la Unidad:</label>
+        <input type="text" name="numero_unidad" placeholder="Número de Unidad (Ej: M-105)" required>
+        <input type="text" name="color_vehiculo" placeholder="Color del vehículo (Ej: Rojo)" required>
+
+        <button type="submit" style="background:#27ae60; color:white; padding:12px; width:100%; border:none; border-radius:6px; margin-top:10px; font-weight:bold; cursor:pointer;">
+            Finalizar Registro
         </button>
     </form>
 </div>
+
+<style>
+    /* Estilo para que los inputs se vean uniformes */
+    input {
+        width: 100%;
+        padding: 10px;
+        margin: 8px 0;
+        border: 1px solid #ccc;
+        border-radius: 5px;
+        box-sizing: border-box; /* Evita que el padding ensanche el input */
+    }
+</style>
 {% endblock %}
