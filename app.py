@@ -9,11 +9,13 @@ app.secret_key = "secreto_muy_seguro"
 # ---------------------- DB (Rutas Absolutas para Servidor) ----------------------
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 DB_PATH = os.path.join(BASE_DIR, "database.db")
+import sqlite3
+import os
 
 def get_db():
-    conn = sqlite3.connect(DB_PATH)
-    conn.row_factory = sqlite3.Row
-    return conn
+    path = "tu_basedatos.db"  # ← aquí pon el nombre REAL de tu .db
+    print("🔥 DB REAL:", os.path.abspath(path))
+    return sqlite3.connect(path)
 
 def crear_tablas():
     conn = get_db()
