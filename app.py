@@ -499,6 +499,58 @@ def verificar_cancelaciones():
     if cancelado:
         return {"cancelado": True, "id": cancelado["id"]}
     else:
-        return {"cancelado": False}
+ 
+       return {"cancelado": False}
+@app.route("/reset_viajes", methods=["POST"])
+def reset_viajes():
+
+    if not session.get("admin"):
+        return "No autorizado", 403
+
+    conn = get_db()
+    conn.execute("PRAGMA foreign_keys = OFF")
+
+    conn.execute("DELETE FROM viajes")
+    conn.execute("DELETE FROM sqlite_sequence WHERE name='viajes'")
+
+    conn.execute("PRAGMA foreign_keys = ON")
+    conn.commit()
+    conn.close()
+
+    return redirect("/admin")
+@app.route("/reset_usuarios", methods=["POST"])
+def reset_usuarios():
+
+    if not session.get("admin"):
+        return "No autorizado", 403
+
+    conn = get_db()
+    conn.execute("PRAGMA foreign_keys = OFF")
+
+    conn.execute("DELETE FROM usuarios")
+    conn.execute("DELETE FROM sqlite_sequence WHERE name='usuarios'")
+
+    conn.execute("PRAGMA foreign_keys = ON")
+    conn.commit()
+    conn.close()
+
+    return redirect("/admin")
+@app.route("/reset_conductores", methods=["POST"])
+def reset_conductores():
+
+    if not session.get("admin"):
+        return "No autorizado", 403
+
+    conn = get_db()
+    conn.execute("PRAGMA foreign_keys = OFF")
+
+    conn.execute("DELETE FROM conductores")
+    conn.execute("DELETE FROM sqlite_sequence WHERE name='conductores'")
+
+    conn.execute("PRAGMA foreign_keys = ON")
+    conn.commit()
+    conn.close()
+
+    return redirect("/admin")
 if __name__ == "__main__":
     app.run(debug=True)

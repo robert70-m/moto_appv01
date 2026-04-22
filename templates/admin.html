@@ -21,7 +21,29 @@
                 <i class="fas fa-plus"></i> Registrar Nuevo Conductor
             </a>
         </div>
+<div style="display:flex; gap:10px; justify-content:flex-end; margin-bottom:15px; flex-wrap:wrap;">
+<form method="POST" action="{{ url_for('reset_viajes') }}"
+      onsubmit="return confirm('⚠️ Se borrarán TODOS los viajes. ¿Continuar?');">
 
+    <button type="submit" class="btn-bloquear" style="background:#e67e22;">
+        <i class="fas fa-route"></i> Resetear Viajes
+    </button>
+</form>
+<form method="POST" action="{{ url_for('reset_usuarios') }}"
+      onsubmit="return confirm('⚠️ Se borrarán TODOS los usuarios. ¿Continuar?');">
+
+    <button type="submit" class="btn-bloquear" style="background:#8e44ad;">
+        <i class="fas fa-user"></i> Resetear Usuarios
+    </button>
+</form>
+<form method="POST" action="{{ url_for('reset_conductores') }}"
+      onsubmit="return confirm('⚠️ Se borrarán TODOS los conductores. ¿Continuar?');">
+
+    <button type="submit" class="btn-bloquear" style="background:#c0392b;">
+        <i class="fas fa-motorcycle"></i> Resetear Conductores
+    </button>
+</form>
+</div>
         <table id="tablaConductores">
             <thead>
                 <tr style="background: var(--primary); color: white;">
