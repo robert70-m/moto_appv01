@@ -27,6 +27,9 @@
                 <tr style="background: var(--primary); color: white;">
                     <th style="padding: 12px;">Nombre</th>
                     <th>Teléfono</th>
+                    <th>N° Unidad</th>
+                    <th>Color</th>
+
                     <th>Estado</th>
                     <th>Último Pago</th>
                     <th>Suscripción</th>
@@ -39,7 +42,8 @@
                 <tr style="border-bottom: 1px solid #eee;">
                     <td style="padding: 12px;"><b>{{ c.nombre }}</b></td>
                     <td>{{ c.telefono }}</td>
-
+                    <td>{{ c.numero_unidad or '-' }}</td>
+                    <td>{{ c.color_vehiculo or '-' }}</td>
                     <td>
                         {% if c.activo == 1 or c.activo == "1" %}
                             <span class="activo">

@@ -158,6 +158,10 @@ def registro_conductor():
         t = request.form.get("telefono")
         p = request.form.get("password")
 
+        # 🆕 nuevos campos
+        numero_unidad = request.form.get("numero_unidad")
+        color_vehiculo = request.form.get("color_vehiculo")
+
         conn = get_db()
 
         existe = conn.execute(
@@ -169,16 +173,21 @@ def registro_conductor():
             conn.close()
             return "Teléfono ya registrado"
 
+        # 🆕 INSERT actualizado
         conn.execute(
-            "INSERT INTO usuarios (nombre, telefono, password, tipo) VALUES (?, ?, ?, 'conductor')",
-            (n, t, p)
+            """INSERT INTO usuarios 
+            (nombre, telefono, password, tipo, numero_unidad, color_vehiculo) 
+            VALUES (?, ?, ?, 'conductor', ?, ?)""",
+            (n, t, p, numero_unidad, color_vehiculo)
         )
+
         conn.commit()
         conn.close()
 
         return redirect(url_for("login"))
 
     return render_template("registro_conductor.html")
+
 @app.route("/conductor")
 def conductor():
 ##
