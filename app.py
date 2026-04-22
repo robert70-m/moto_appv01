@@ -532,7 +532,7 @@ def reset_usuarios():
     conn.execute("PRAGMA foreign_keys = OFF")
 
     # ❌ no borrar admin
-    conn.execute("DELETE FROM usuarios WHERE tipo != 'admin'")
+    conn.execute("DELETE FROM usuarios WHERE LOWER(TRIM(tipo)) != 'admin'")
 
     conn.execute("DELETE FROM sqlite_sequence WHERE name='usuarios'")
 
