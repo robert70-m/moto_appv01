@@ -340,9 +340,9 @@ def actualizar_ubicacion():
 # ---------------------- ADMIN ----------------------
 @app.route("/admin")
 def admin():
-
+    # 1. Corregimos la identación y quitamos el mensaje de prueba
     if session.get("tipo") != "admin":
-        return "Acceso denegado", 403
+        return redirect(url_for("login")) # Si no es admin, lo manda al login
 
     conn = get_db()
 
@@ -355,7 +355,6 @@ def admin():
 
     for c in conductores:
         c_dict = dict(c)
-
         dias = "Sin pago"
 
         if c["fecha_pago"]:
@@ -365,7 +364,6 @@ def admin():
                 ) + timedelta(days=7)
 
                 diferencia = (vencimiento - ahora).days
-
                 dias = "Vencido" if diferencia < 0 else diferencia
 
             except:
