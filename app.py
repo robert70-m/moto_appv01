@@ -505,6 +505,7 @@ def verificar_cancelaciones():
        return {"cancelado": False}
 @app.route("/reset_viajes", methods=["POST"])
 def reset_viajes():
+
     if session.get("tipo") != "admin":
         return "No autorizado", 403
 
@@ -512,6 +513,7 @@ def reset_viajes():
     conn.execute("PRAGMA foreign_keys = OFF")
 
     conn.execute("DELETE FROM viajes")
+
     conn.execute("DELETE FROM sqlite_sequence WHERE name='viajes'")
 
     conn.execute("PRAGMA foreign_keys = ON")
@@ -520,16 +522,18 @@ def reset_viajes():
 
     return redirect("/admin")
 
-
 @app.route("/reset_usuarios", methods=["POST"])
 def reset_usuarios():
+
     if session.get("tipo") != "admin":
         return "No autorizado", 403
 
     conn = get_db()
     conn.execute("PRAGMA foreign_keys = OFF")
 
-    conn.execute("DELETE FROM usuarios")
+    # ❌ no borrar admin
+    conn.execute("DELETE FROM usuarios WHERE tipo != 'admin'")
+
     conn.execute("DELETE FROM sqlite_sequence WHERE name='usuarios'")
 
     conn.execute("PRAGMA foreign_keys = ON")
@@ -538,16 +542,18 @@ def reset_usuarios():
 
     return redirect("/admin")
 
-
 @app.route("/reset_conductores", methods=["POST"])
 def reset_conductores():
+
     if session.get("tipo") != "admin":
         return "No autorizado", 403
 
     conn = get_db()
     conn.execute("PRAGMA foreign_keys = OFF")
 
-    conn.execute("DELETE FROM usuarios WHERE tipo='conductor'")
+    # solo conductores, nunca admin
+    conn.execute("DELETE FROM usuarios WHERE tipo = 'conductor'")
+
     conn.execute("DELETE FROM sqlite_sequence WHERE name='usuarios'")
 
     conn.execute("PRAGMA foreign_keys = ON")
