@@ -4,7 +4,7 @@ from datetime import datetime, timedelta
 from flask import Flask, render_template, request, redirect, url_for, session, jsonify
 
 app = Flask(__name__)
-app.secret_key = "secreto_muy_seguro"
+app.secret_key = "secreto_muy_seguro_hernandez_el mejor servicio"
 
 # ---------------------- DB (Rutas Absolutas para Servidor) ----------------------
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -20,16 +20,18 @@ def crear_tablas():
     cursor = conn.cursor()
     cursor.execute("""
     CREATE TABLE IF NOT EXISTS usuarios (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        nombre TEXT, telefono TEXT, password TEXT, tipo TEXT,
-        lat REAL, lng REAL, activo INTEGER DEFAULT 1, fecha_pago TEXT
-    )""")
-    cursor.execute("""
-    CREATE TABLE IF NOT EXISTS viajes (
-        id INTEGER PRIMARY KEY AUTOINCREMENT, cliente_id INTEGER,
-        conductor_id INTEGER, estado TEXT, origen TEXT, destino TEXT,
-        lat REAL, lng REAL, lat_destino REAL, lng_destino REAL
-    )""")
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    nombre TEXT,
+    telefono TEXT,
+    password TEXT,
+    tipo TEXT,
+    numero_unidad TEXT,
+    color_vehiculo TEXT,
+    lat REAL,
+    lng REAL,
+    activo INTEGER DEFAULT 1,
+    fecha_pago TEXT
+)""")
     conn.commit()
     conn.close()
 
@@ -503,10 +505,9 @@ def verificar_cancelaciones():
        return {"cancelado": False}
 @app.route("/reset_viajes", methods=["POST"])
 def reset_viajes():
-
-    if not session.get("admin"):
-        return "No autorizado", 403
-
+    if session.get("tipo") != "admin":
+    return "No autorizado", 403
+    
     conn = get_db()
     conn.execute("PRAGMA foreign_keys = OFF")
 
@@ -521,8 +522,8 @@ def reset_viajes():
 @app.route("/reset_usuarios", methods=["POST"])
 def reset_usuarios():
 
-    if not session.get("admin"):
-        return "No autorizado", 403
+    if session.get("tipo") != "admin":
+    return "No autorizado", 403
 
     conn = get_db()
     conn.execute("PRAGMA foreign_keys = OFF")
@@ -538,8 +539,8 @@ def reset_usuarios():
 @app.route("/reset_conductores", methods=["POST"])
 def reset_conductores():
 
-    if not session.get("admin"):
-        return "No autorizado", 403
+    if session.get("tipo") != "admin":
+    return "No autorizado", 403
 
     conn = get_db()
     conn.execute("PRAGMA foreign_keys = OFF")
