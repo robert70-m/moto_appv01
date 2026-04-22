@@ -16,7 +16,7 @@
     <div style="overflow-x: auto;">
 
         <div style="text-align: right; margin-bottom: 20px;">
-            <a href="/registro_conductor" class="btn-pago"
+            <a href="{{ url_for('registro_conductor') }}" class="btn-pago"
                style="background: #27ae60; padding: 10px 20px;">
                 <i class="fas fa-plus"></i> Registrar Nuevo Conductor
             </a>
@@ -36,7 +36,7 @@
 
             <tbody>
                 {% for c in conductores %}
-                <tr style="border-bottom: 1px solid #eee;">
+                <tr>
                     <td style="padding: 12px;"><b>{{ c.nombre }}</b></td>
                     <td>{{ c.telefono }}</td>
 
@@ -68,7 +68,7 @@
                         {% endif %}
                     </td>
 
-                    <td style="display: flex; gap: 5px; justify-content: center;">
+                    <td style="display: flex; gap: 5px; justify-content: center; flex-wrap: wrap;">
 
                         {% if c.activo == 1 or c.activo == "1" %}
                             <a class="btn-bloquear"
@@ -91,7 +91,6 @@
                         </a>
 
                     </td>
-
                 </tr>
                 {% endfor %}
             </tbody>
@@ -107,20 +106,15 @@
 
 <script>
 function filtrarTabla() {
-    let input = document.getElementById("buscador");
-    let filter = input.value.toLowerCase();
-    let table = document.getElementById("tablaConductores");
-    let tr = table.getElementsByTagName("tr");
+    const input = document.getElementById("buscador");
+    const filter = input.value.toLowerCase();
+    const rows = document.querySelectorAll("#tablaConductores tbody tr");
 
-    for (let i = 1; i < tr.length; i++) {
-        let tdNombre = tr[i].getElementsByTagName("td")[0];
-        let tdTel = tr[i].getElementsByTagName("td")[1];
-
-        if (tdNombre || tdTel) {
-            let texto = (tdNombre.textContent + tdTel.textContent).toLowerCase();
-            tr[i].style.display = texto.indexOf(filter) > -1 ? "" : "none";
-        }
-    }
+    rows.forEach(row => {
+        const nombre = row.children[0].textContent.toLowerCase();
+        const tel = row.children[1].textContent.toLowerCase();
+        row.style.display = (nombre + tel).includes(filter) ? "" : "none";
+    });
 }
 </script>
 
@@ -135,6 +129,7 @@ table {
 th, td {
     text-align: center;
     border-bottom: 1px solid #eee;
+    padding: 10px;
 }
 
 .btn-activar, .btn-bloquear, .btn-pago {
@@ -142,6 +137,7 @@ th, td {
     border-radius: 5px;
     color: white;
     font-size: 12px;
+    text-decoration: none;
 }
 
 .btn-activar { background: var(--accent); }

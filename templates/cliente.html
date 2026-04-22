@@ -15,9 +15,9 @@
     </div>
     {% endif %}
 
-    <form action="/pedir_viaje" method="POST">
+    <form action="{{ url_for('pedir_viaje') }}" method="POST">
         <label style="font-size: 12px; color: #7f8c8d;">Punto de partida:</label>
-        <input type="text" id="input_origen" name="origen" placeholder="Selecciona origen en el mapa" readonly required>
+        <input type="text" id="input_origen" name="origen" placeholder="Detectando ubicación..." readonly required>
         
         <label style="font-size: 12px; color: #7f8c8d; margin-top: 10px; display: block;">Destino:</label>
         <input type="text" id="input_destino" name="destino" placeholder="Selecciona destino en el mapa" readonly required>
@@ -77,7 +77,6 @@ document.addEventListener("DOMContentLoaded", function() {
     let primeraVez = true;
     let alertaMostrada = false;
 
-    // 🟢 Iconos profesionales (NO emojis)
     let iconoCliente = L.icon({
         iconUrl: 'https://maps.google.com/mapfiles/ms/icons/green-dot.png',
         iconSize: [40, 40],
@@ -110,9 +109,12 @@ document.addEventListener("DOMContentLoaded", function() {
 
     function initMap(lat, lng) {
         if (map) return;
+
         map = L.map('map').setView([lat, lng], 16);
 
-        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            attribution: '© OpenStreetMap'
+        }).addTo(map);
 
         map.on('click', function(e) {
             let latD = e.latlng.lat;
@@ -132,36 +134,43 @@ document.addEventListener("DOMContentLoaded", function() {
         });
     }
 
+    // 🔥 FIX IMPORTANTE: manejo de error geolocalización
     if (navigator.geolocation) {
-        navigator.geolocation.watchPosition(function(pos) {
-            const lat = pos.coords.latitude;
-            const lng = pos.coords.longitude;
+        navigator.geolocation.watchPosition(
+            function(pos) {
+                const lat = pos.coords.latitude;
+                const lng = pos.coords.longitude;
 
-            document.getElementById("lat").value = lat;
-            document.getElementById("lng").value = lng;
-            document.getElementById("input_origen").value = "Ubicación Detectada ✅";
+                document.getElementById("lat").value = lat;
+                document.getElementById("lng").value = lng;
+                document.getElementById("input_origen").value = "Ubicación detectada ✅";
 
-            if (!map) initMap(lat, lng);
+                if (!map) initMap(lat, lng);
 
-            if (marcadorUsuario) {
-                marcadorUsuario.setLatLng([lat, lng]);
-            } else {
-                marcadorUsuario = L.marker([lat, lng], { icon: iconoCliente })
-                    .addTo(map)
-                    .bindPopup("Estás aquí").openPopup();
-            }
+                if (marcadorUsuario) {
+                    marcadorUsuario.setLatLng([lat, lng]);
+                } else {
+                    marcadorUsuario = L.marker([lat, lng], { icon: iconoCliente })
+                        .addTo(map)
+                        .bindPopup("Estás aquí");
+                }
 
-            if (primeraVez && map) {
-                map.setView([lat, lng], 16);
-                primeraVez = false;
-            }
-        });
+                if (primeraVez && map) {
+                    map.setView([lat, lng], 16);
+                    primeraVez = false;
+                }
+            },
+            function(error) {
+                document.getElementById("input_origen").value = "Activa GPS para usar la app";
+            },
+            { enableHighAccuracy: true }
+        );
     }
 
     function vigilarViaje() {
         const idViaje = "{{ viaje_id }}";
 
-        if (!idViaje || idViaje === "None" || idViaje === "") {
+        if (!idViaje || idViaje === "None") {
             document.getElementById("status_conductor").style.display = "none";
             return;
         }
@@ -171,8 +180,10 @@ document.addEventListener("DOMContentLoaded", function() {
         .then(data => {
 
             if (data.estado === 'finalizado') {
-                mostrarToast("¡Viaje finalizado!", "success");
-                setTimeout(() => window.location.href = "/cliente", 1500);
+                if (typeof mostrarToast === "function") {
+                    mostrarToast("¡Viaje finalizado!", "success");
+                }
+                setTimeout(() => window.location.href = "{{ url_for('cliente') }}", 1500);
             } 
 
             else if (data.estado === 'cerca') {
@@ -191,6 +202,9 @@ document.addEventListener("DOMContentLoaded", function() {
                 document.getElementById("nombre_en_pantalla").innerText = data.conductor;
                 document.getElementById("texto_estado").innerText = data.estado;
             }
+        })
+        .catch(() => {
+            console.log("Error consultando estado del viaje");
         });
     }
 

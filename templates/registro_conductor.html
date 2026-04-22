@@ -4,12 +4,50 @@
 <div class="card">
     <h2>Registrar Conductor 🏍️</h2>
 
-    <form method="POST">
-        <input type="text" name="nombre" placeholder="Nombre" required>
-        <input type="text" name="telefono" placeholder="Teléfono" required>
-        <input type="password" name="password" placeholder="Contraseña" required>
+    <form method="POST" action="{{ url_for('registro_conductor') }}" autocomplete="off">
 
-        <button type="submit" style="background:#27ae60; color:white; padding:10px; width:100%;">
+        <input 
+            type="text" 
+            name="nombre" 
+            placeholder="Nombre completo" 
+            required
+        >
+
+        <input 
+            type="tel" 
+            name="telefono" 
+            placeholder="Teléfono (10 dígitos)" 
+            required
+            pattern="[0-9]{10}"
+            inputmode="numeric"
+        >
+
+        <input 
+            type="password" 
+            name="password" 
+            placeholder="Contraseña (mínimo 4 caracteres)" 
+            required
+            minlength="4"
+        >
+
+        <!-- 🚕 Número de unidad -->
+        <input 
+            type="text" 
+            name="numero_unidad" 
+            placeholder="Número de unidad (Ej: MOTO-12)" 
+            required
+        >
+
+        <!-- 🎨 Color de unidad -->
+        <input 
+            type="text" 
+            name="color_unidad" 
+            placeholder="Color de la moto (Ej: Rojo, Negro, Azul)" 
+            required
+        >
+
+        <button type="submit" 
+                style="background:#27ae60; color:white; padding:12px; width:100%; border:none; border-radius:8px; font-weight:bold;">
             Registrar
         </button>
     </form>

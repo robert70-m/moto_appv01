@@ -11,7 +11,8 @@
     <p style="color: #7f8c8d; margin: 5px 0;">
         Estado: <strong id="status-text">En línea 🟢</strong>
     </p>
-    <a href="/viajes_disponibles" style="text-decoration: none;">
+
+    <a href="{{ url_for('viajes_disponibles') }}" style="text-decoration: none;">
         <button style="background: #3498db; width: 100%; padding: 10px; border: none; color: white; border-radius: 5px; font-weight: bold; cursor: pointer; font-size: 16px;">
             🔎 Ver viajes disponibles
         </button>
@@ -56,41 +57,63 @@
 
 <style>
 .alerta-viaje {
-    position: fixed; top: 0; left: 0; width: 100%; background: #e74c3c; color: white;
-    text-align: center; padding: 25px; font-size: 20px; font-weight: bold; z-index: 9999;
-    animation: parpadeo 1s infinite; cursor: pointer;
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    background: #e74c3c;
+    color: white;
+    text-align: center;
+    padding: 25px;
+    font-size: 20px;
+    font-weight: bold;
+    z-index: 9999;
+    animation: parpadeo 1s infinite;
+    cursor: pointer;
 }
-@keyframes parpadeo { 0% { opacity: 1; } 50% { opacity: 0.7; } 100% { opacity: 1; } }
-button:disabled { background: #bdc3c7 !important; cursor: not-allowed; opacity: 0.6; }
-.leaflet-routing-container { display: none !important; }
+@keyframes parpadeo {
+    0% { opacity: 1; }
+    50% { opacity: 0.7; }
+    100% { opacity: 1; }
+}
+button:disabled {
+    background: #bdc3c7 !important;
+    cursor: not-allowed;
+    opacity: 0.6;
+}
+.leaflet-routing-container {
+    display: none !important;
+}
 </style>
 
 <script>
-// --- CONFIGURACIÓN GLOBAL DE ICONOS PARA EVITAR QUE DESAPAREZCAN ---
+// ICONOS
 const iconVerde = L.icon({
     iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-green.png',
     shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/0.7.7/images/marker-shadow.png',
-    iconSize: [25, 41], iconAnchor: [12, 41], popupAnchor: [1, -34], shadowSize: [41, 41]
+    iconSize: [25, 41],
+    iconAnchor: [12, 41]
 });
 
 const iconRojo = L.icon({
     iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-red.png',
     shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/0.7.7/images/marker-shadow.png',
-    iconSize: [25, 41], iconAnchor: [12, 41], popupAnchor: [1, -34], shadowSize: [41, 41]
+    iconSize: [25, 41],
+    iconAnchor: [12, 41]
 });
 
-// --- 1. MAPA ---
+// MAPA
 {% if viaje %}
 document.addEventListener("DOMContentLoaded", function() {
     try {
-        var latO = {{ viaje.lat or 0 }};
-        var lngO = {{ viaje.lng or 0 }};
-        var latD = {{ viaje.lat_destino or 0 }};
-        var lngD = {{ viaje.lng_destino or 0 }};
+        const latO = {{ viaje.lat or 0 }};
+        const lngO = {{ viaje.lng or 0 }};
+        const latD = {{ viaje.lat_destino or 0 }};
+        const lngD = {{ viaje.lng_destino or 0 }};
 
-        if (latO === 0 || latD === 0) return;
+        if (!latO || !latD) return;
 
-        var map = L.map('map_conductor').setView([latO, lngO], 15);
+        const map = L.map('map_conductor').setView([latO, lngO], 15);
 
         L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
             attribution: '© OpenStreetMap'
@@ -102,20 +125,18 @@ document.addEventListener("DOMContentLoaded", function() {
                 L.latLng(latD, lngD)
             ],
             lineOptions: {
-                styles: [{color: '#2980b9', opacity: 0.8, weight: 6}]
+                styles: [{ color: '#2980b9', opacity: 0.8, weight: 6 }]
             },
             addWaypoints: false,
             draggableWaypoints: false,
             show: false,
             createMarker: function(i, wp) {
-                // ✅ AQUÍ ASIGNAMOS LOS ICONOS PARA QUE SÍ SE VEAN
                 return L.marker(wp.latLng, {
-                    icon: (i === 0) ? iconVerde : iconRojo
-                }).bindPopup(i === 0 ? "📍 Recoger Cliente" : "🏁 Destino del Viaje");
+                    icon: i === 0 ? iconVerde : iconRojo
+                }).bindPopup(i === 0 ? "📍 Recoger Cliente" : "🏁 Destino");
             }
         }).addTo(map);
 
-        // Ajuste para móviles
         setTimeout(() => map.invalidateSize(), 500);
 
     } catch (e) {
@@ -124,42 +145,62 @@ document.addEventListener("DOMContentLoaded", function() {
 });
 {% endif %}
 
-// --- 2. FUNCIONES DE ESTADO Y GPS (Mantener igual) ---
+// ESTADO
 function actualizarEstado(nuevoEstado, viajeId) {
-    if (!viajeId || viajeId === "" || viajeId === "None") {
+    if (!viajeId) {
         alert("No hay viaje activo.");
         return;
     }
+
     fetch(`/cambiar_estado_viaje/${viajeId}/${nuevoEstado}`)
     .then(res => {
         if (res.ok) {
-            window.location.href = nuevoEstado === 'finalizado' ? "/viajes_disponibles" : "/conductor";
+            window.location.href = nuevoEstado === 'finalizado'
+                ? "{{ url_for('viajes_disponibles') }}"
+                : "{{ url_for('conductor') }}";
         } else {
             alert("Error al actualizar estado");
         }
-    });
+    })
+    .catch(() => alert("Error de conexión"));
 }
 
+// GPS (con manejo de error)
 if (navigator.geolocation) {
-    navigator.geolocation.watchPosition(pos => {
-        let fd = new FormData();
-        fd.append("lat", pos.coords.latitude);
-        fd.append("lng", pos.coords.longitude);
-        fetch("/actualizar_ubicacion", { method: "POST", body: fd });
-    }, null, { enableHighAccuracy: true });
+    navigator.geolocation.watchPosition(
+        pos => {
+            let fd = new FormData();
+            fd.append("lat", pos.coords.latitude);
+            fd.append("lng", pos.coords.longitude);
+
+            fetch("{{ url_for('actualizar_ubicacion') }}", {
+                method: "POST",
+                body: fd
+            });
+        },
+        err => {
+            console.log("GPS no disponible");
+        },
+        { enableHighAccuracy: true }
+    );
 }
 
-// --- 4. ALERTA NUEVOS VIAJES ---
+// ALERTA NUEVOS VIAJES
 let alertaActiva = false;
 let intervaloSonido;
 let ultimoId = 0;
 
 function iniciarAlerta() {
     if (alertaActiva) return;
+
     alertaActiva = true;
     document.getElementById("alerta-viaje").style.display = "block";
+
     const sonido = document.getElementById("sonidoNotificacion");
-    intervaloSonido = setInterval(() => sonido.play().catch(()=>{}), 2000);
+
+    intervaloSonido = setInterval(() => {
+        sonido.play().catch(()=>{});
+    }, 2000);
 }
 
 function detenerAlerta() {
@@ -170,29 +211,34 @@ function detenerAlerta() {
 
 setInterval(() => {
     {% if not viaje %}
-    fetch(`/verificar_viajes?ultimo_id=${ultimoId}`)
+    fetch(`{{ url_for('verificar_viajes') }}?ultimo_id=${ultimoId}`)
     .then(r => r.json())
     .then(data => {
         if (data.nuevo_viaje) {
             iniciarAlerta();
             ultimoId = data.id;
         }
-    });
+    })
+    .catch(()=>{});
     {% endif %}
 }, 5000);
 
-// --- 5. DETECTAR CANCELACIÓN ---
+// CANCELACIONES
 let ultimoCancelado = 0;
+
 setInterval(() => {
-    fetch(`/verificar_cancelaciones?ultimo_id=${ultimoCancelado}`)
+    fetch(`{{ url_for('verificar_cancelaciones') }}?ultimo_id=${ultimoCancelado}`)
     .then(r => r.json())
     .then(data => {
         if (data.cancelado) {
             alert("❌ El cliente canceló el viaje");
             ultimoCancelado = data.id;
-            window.location.href = "/viajes_disponibles";
+            window.location.href = "{{ url_for('viajes_disponibles') }}";
         }
-    });
+    })
+    .catch(()=>{});
 }, 4000);
+
 </script>
+
 {% endblock %}
