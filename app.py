@@ -340,27 +340,43 @@ def actualizar_ubicacion():
 # ---------------------- ADMIN ----------------------
 @app.route("/admin")
 def admin():
-   if session.get("tipo") != "admin":
-       return "Acceso denegado", 403
+
+    if session.get("tipo") != "admin":
+        return "Acceso denegado", 403
 
     conn = get_db()
-    conductores = conn.execute("SELECT * FROM usuarios WHERE tipo='conductor'").fetchall()
+
+    conductores = conn.execute(
+        "SELECT * FROM usuarios WHERE tipo='conductor'"
+    ).fetchall()
+
     lista = []
     ahora = datetime.now()
+
     for c in conductores:
         c_dict = dict(c)
+
         dias = "Sin pago"
+
         if c["fecha_pago"]:
             try:
-                vencimiento = datetime.strptime(c["fecha_pago"], "%Y-%m-%d") + timedelta(days=7)
+                vencimiento = datetime.strptime(
+                    c["fecha_pago"], "%Y-%m-%d"
+                ) + timedelta(days=7)
+
                 diferencia = (vencimiento - ahora).days
+
                 dias = "Vencido" if diferencia < 0 else diferencia
-            except: dias = "Error fecha"
+
+            except:
+                dias = "Error fecha"
+
         c_dict["dias_restantes"] = dias
         lista.append(c_dict)
-    conn.close()
-    return render_template("admin.html", conductores=lista)
 
+    conn.close()
+
+    return render_template("admin.html", conductores=lista)
 @app.route("/toggle_conductor/<int:id>")
 def toggle_conductor(id):
     conn = get_db()
