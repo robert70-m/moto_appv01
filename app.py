@@ -506,8 +506,8 @@ def verificar_cancelaciones():
 @app.route("/reset_viajes", methods=["POST"])
 def reset_viajes():
     if session.get("tipo") != "admin":
-    return "No autorizado", 403
-    
+        return "No autorizado", 403
+
     conn = get_db()
     conn.execute("PRAGMA foreign_keys = OFF")
 
@@ -519,11 +519,12 @@ def reset_viajes():
     conn.close()
 
     return redirect("/admin")
+
+
 @app.route("/reset_usuarios", methods=["POST"])
 def reset_usuarios():
-
     if session.get("tipo") != "admin":
-    return "No autorizado", 403
+        return "No autorizado", 403
 
     conn = get_db()
     conn.execute("PRAGMA foreign_keys = OFF")
@@ -536,22 +537,27 @@ def reset_usuarios():
     conn.close()
 
     return redirect("/admin")
+
+
 @app.route("/reset_conductores", methods=["POST"])
 def reset_conductores():
-
     if session.get("tipo") != "admin":
-    return "No autorizado", 403
+        return "No autorizado", 403
 
     conn = get_db()
     conn.execute("PRAGMA foreign_keys = OFF")
 
-    conn.execute("DELETE FROM conductores")
-    conn.execute("DELETE FROM sqlite_sequence WHERE name='conductores'")
+    conn.execute("DELETE FROM usuarios WHERE tipo='conductor'")
+    conn.execute("DELETE FROM sqlite_sequence WHERE name='usuarios'")
 
     conn.execute("PRAGMA foreign_keys = ON")
     conn.commit()
     conn.close()
 
     return redirect("/admin")
+
+
 if __name__ == "__main__":
     app.run(debug=True)
+
+
