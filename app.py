@@ -340,7 +340,9 @@ def actualizar_ubicacion():
 # ---------------------- ADMIN ----------------------
 @app.route("/admin")
 def admin():
-    if str(session.get("telefono", "")).strip() != '9513928223': return "Acceso denegado", 403
+   if session.get("tipo") != "admin":
+       return "Acceso denegado", 403
+
     conn = get_db()
     conductores = conn.execute("SELECT * FROM usuarios WHERE tipo='conductor'").fetchall()
     lista = []
