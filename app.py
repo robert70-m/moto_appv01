@@ -16,7 +16,7 @@ def get_db():
     return conn
 
 def crear_tablas():
-    conn = get_db()
+    conn = get_db() 
     cursor = conn.cursor()
     cursor.execute("""
     CREATE TABLE IF NOT EXISTS usuarios (
@@ -37,9 +37,6 @@ def crear_tablas():
 
 crear_tablas()
 # -------------------------------------------------------------
-
-
-# ---------------------- LOGIN / REGISTRO ----------------------
 @app.route("/", methods=["GET", "POST"])
 def login():
     error = None
@@ -55,9 +52,10 @@ def login():
         ).fetchone()
         conn.close()
 
-##
         print("USER ENCONTRADO:", user)
+        
         if user:
+            # Guardamos los datos en la sesión
             session.update({
                 "user_id": user["id"],
                 "tipo": str(user["tipo"]).lower().strip(),
@@ -65,20 +63,29 @@ def login():
                 "telefono": user["telefono"]
             })
 
-##
-            print("SESSION DESPUÉS DE LOGIN:", dict(session))  # 👈 AQUÍ
-            # 🔥 REDIRECCIÓN CORRECTA
-            if session["tipo"] == "cliente":
-                return redirect(url_for("cliente"))
+            print("SESSION DESPUÉS DE LOGIN:", dict(session))
+
+            # --- LÓGICA DE REDIRECCIÓN CORREGIDA ---
+            if session["tipo"] == "admin":
+                return redirect(url_for("admin"))
+            
             elif session["tipo"] == "conductor":
                 return redirect(url_for("conductor"))
+            
+            elif session["tipo"] == "cliente":
+                return redirect(url_for("cliente"))
+            
             else:
-                return redirect(url_for("login"))
+                # Si el tipo es algo raro o está vacío, lo mandamos al login de nuevo
+                error = f"Tipo de usuario '{session['tipo']}' no reconocido."
+                return render_template("login.html", error=error)
 
         else:
-            error = "Datos incorrectos"
+            error = "Teléfono o contraseña incorrectos"
 
     return render_template("login.html", error=error)
+
+# ---------------------- LOGIN / REGISTRO ----------------------
 @app.route("/registro", methods=["GET", "POST"])
 def registro():
     if request.method == "POST":
