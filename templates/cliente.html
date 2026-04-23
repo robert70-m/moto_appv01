@@ -31,8 +31,8 @@
     </form>
 
     {% if viaje_id %}
-    <a href="{{ url_for('cancelar_viaje', id=viaje_id) }}"
-       onclick="return confirm('¿Seguro que deseas cancelar el viaje?')">
+    <a href="{{ url_for('cancelar_viaje', viaje_id=viaje_id) }}"
+           onclick="return confirm('¿Seguro que deseas cancelar el viaje?')">
         <button style="margin-top:10px;background:#e74c3c;color:white;padding:12px;border:none;border-radius:6px;width:100%;">
             ❌ Cancelar Viaje
         </button>
