@@ -2,11 +2,12 @@
 
 {% block content %}
 <div class="card">
-    <h2>Registrar Conductor 🏍️</h2>
+    <h2 style="text-align: center; color: var(--primary);">Registrar Conductor 🏍️</h2>
 
-<<<<<<< HEAD
     <form method="POST" action="{{ url_for('registro_conductor') }}" autocomplete="off">
-
+        
+        <label style="font-size: 12px; color: #7f8c8d; font-weight: bold;">DATOS PERSONALES</label>
+        
         <input 
             type="text" 
             name="nombre" 
@@ -18,7 +19,7 @@
             type="tel" 
             name="telefono" 
             placeholder="Teléfono (10 dígitos)" 
-            required
+            required 
             pattern="[0-9]{10}"
             inputmode="numeric"
         >
@@ -27,19 +28,23 @@
             type="password" 
             name="password" 
             placeholder="Contraseña (mínimo 4 caracteres)" 
-            required
+            required 
             minlength="4"
         >
 
-        <!-- 🚕 Número de unidad -->
+        <div style="margin: 20px 0; border-top: 2px solid #eee; position: relative;">
+            <span style="position: absolute; top: -10px; left: 10px; background: white; padding: 0 10px; font-size: 12px; color: #7f8c8d; font-weight: bold;">
+                DATOS DE LA UNIDAD
+            </span>
+        </div>
+        
         <input 
             type="text" 
             name="numero_unidad" 
-            placeholder="Número de unidad (Ej: MOTO-12)" 
+            placeholder="Número de unidad (Ej: M-105)" 
             required
         >
 
-        <!-- 🎨 Color de unidad -->
         <input 
             type="text" 
             name="color_unidad" 
@@ -48,37 +53,40 @@
         >
 
         <button type="submit" 
-                style="background:#27ae60; color:white; padding:12px; width:100%; border:none; border-radius:8px; font-weight:bold;">
-            Registrar
-=======
-    <form method="POST">
-        <label style="font-size: 12px; color: #7f8c8d;">Datos Personales:</label>
-        <input type="text" name="nombre" placeholder="Nombre completo" required>
-        <input type="text" name="telefono" placeholder="Teléfono" required>
-        <input type="password" name="password" placeholder="Contraseña" required>
-
-        <hr style="border: 0; border-top: 1px solid #eee; margin: 20px 0;">
-        
-        <label style="font-size: 12px; color: #7f8c8d;">Datos de la Unidad:</label>
-        <input type="text" name="numero_unidad" placeholder="Número de Unidad (Ej: M-105)" required>
-        <input type="text" name="color_vehiculo" placeholder="Color del unidad (Ej: Rojo)" required>
-
-        <button type="submit" style="background:#27ae60; color:white; padding:12px; width:100%; border:none; border-radius:6px; margin-top:10px; font-weight:bold; cursor:pointer;">
-            Finalizar Registro
->>>>>>> 6a1ab476ec442ed936ec13337807179ef48f7bf0
+                style="background: var(--accent); color: white; padding: 15px; width: 100%; border: none; border-radius: 10px; font-weight: bold; font-size: 18px; margin-top: 15px; cursor: pointer; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">
+            Finalizar Registro 🚀
         </button>
     </form>
 </div>
 
 <style>
-    /* Estilo para que los inputs se vean uniformes */
+    /* Estilos específicos para este formulario */
+    .card {
+        max-width: 450px;
+        margin: 20px auto;
+        padding: 25px;
+    }
+
     input {
         width: 100%;
-        padding: 10px;
-        margin: 8px 0;
-        border: 1px solid #ccc;
-        border-radius: 5px;
-        box-sizing: border-box; /* Evita que el padding ensanche el input */
+        padding: 12px 15px;
+        margin: 10px 0;
+        border: 1px solid #ddd;
+        border-radius: 8px;
+        box-sizing: border-box;
+        font-size: 16px;
+        transition: border-color 0.3s;
+    }
+
+    input:focus {
+        border-color: var(--primary);
+        outline: none;
+        background-color: #f9f9f9;
+    }
+
+    label {
+        display: block;
+        margin-top: 10px;
     }
 </style>
 {% endblock %}
