@@ -60,10 +60,12 @@ def crear_tablas():
 crear_tablas()
 
 # ---------------------- LOGIN ----------------------
+# ... (todo el inicio igual)
+
+# ---------------------- LOGIN (Optimizado) ----------------------
 @app.route("/", methods=["GET", "POST"])
 def login():
     error = None
-
     if request.method == "POST":
         telefono = request.form["telefono"]
         password = request.form["password"]
@@ -73,7 +75,7 @@ def login():
             "SELECT * FROM usuarios WHERE telefono=? AND password=?",
             (telefono, password)
         ).fetchone()
-        conn.close()
+        conn.close() # Cerramos aquí para liberar recursos rápido
 
         if user:
             tipo = str(user["tipo"]).lower().strip()
@@ -94,6 +96,8 @@ def login():
             error = "Datos incorrectos"
 
     return render_template("login.html", error=error)
+
+# ... (el resto de tus rutas corregidas que ya tienes)
 
 # ---------------------- REGISTRO CLIENTE ----------------------
 @app.route("/registro", methods=["GET", "POST"])
