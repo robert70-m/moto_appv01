@@ -16,17 +16,42 @@
     <div style="overflow-x: auto;">
 
         <div style="text-align: right; margin-bottom: 20px;">
-            <a href="/registro_conductor" class="btn-pago"
+            <a href="{{ url_for('registro_conductor') }}" class="btn-pago"
                style="background: #27ae60; padding: 10px 20px;">
                 <i class="fas fa-plus"></i> Registrar Nuevo Conductor
             </a>
         </div>
+<div style="display:flex; gap:10px; justify-content:flex-end; margin-bottom:15px; flex-wrap:wrap;">
+<form method="POST" action="{{ url_for('reset_viajes') }}"
+      onsubmit="return confirm('⚠️ Se borrarán TODOS los viajes. ¿Continuar?');">
 
+    <button type="submit" class="btn-bloquear" style="background:#e67e22;">
+        <i class="fas fa-route"></i> Resetear Viajes
+    </button>
+</form>
+<form method="POST" action="{{ url_for('reset_usuarios') }}"
+      onsubmit="return confirm('⚠️ Se borrarán TODOS los usuarios. ¿Continuar?');">
+
+    <button type="submit" class="btn-bloquear" style="background:#8e44ad;">
+        <i class="fas fa-user"></i> Resetear Usuarios
+    </button>
+</form>
+<form method="POST" action="{{ url_for('reset_conductores') }}"
+      onsubmit="return confirm('⚠️ Se borrarán TODOS los conductores. ¿Continuar?');">
+
+    <button type="submit" class="btn-bloquear" style="background:#c0392b;">
+        <i class="fas fa-motorcycle"></i> Resetear Conductores
+    </button>
+</form>
+</div>
         <table id="tablaConductores">
             <thead>
                 <tr style="background: var(--primary); color: white;">
                     <th style="padding: 12px;">Nombre</th>
                     <th>Teléfono</th>
+                    <th>N° Unidad</th>
+                    <th>Color_vehiculo</th>
+
                     <th>Estado</th>
                     <th>Último Pago</th>
                     <th>Suscripción</th>
@@ -36,10 +61,11 @@
 
             <tbody>
                 {% for c in conductores %}
-                <tr style="border-bottom: 1px solid #eee;">
+                <tr>
                     <td style="padding: 12px;"><b>{{ c.nombre }}</b></td>
                     <td>{{ c.telefono }}</td>
-
+                    <td>{{ c.numero_unidad or '-' }}</td>
+                    <td>{{ c.color_vehiculo or '-' }}</td>
                     <td>
                         {% if c.activo == 1 or c.activo == "1" %}
                             <span class="activo">
@@ -68,7 +94,7 @@
                         {% endif %}
                     </td>
 
-                    <td style="display: flex; gap: 5px; justify-content: center;">
+                    <td style="display: flex; gap: 5px; justify-content: center; flex-wrap: wrap;">
 
                         {% if c.activo == 1 or c.activo == "1" %}
                             <a class="btn-bloquear"
@@ -91,7 +117,6 @@
                         </a>
 
                     </td>
-
                 </tr>
                 {% endfor %}
             </tbody>
@@ -107,20 +132,15 @@
 
 <script>
 function filtrarTabla() {
-    let input = document.getElementById("buscador");
-    let filter = input.value.toLowerCase();
-    let table = document.getElementById("tablaConductores");
-    let tr = table.getElementsByTagName("tr");
+    const input = document.getElementById("buscador");
+    const filter = input.value.toLowerCase();
+    const rows = document.querySelectorAll("#tablaConductores tbody tr");
 
-    for (let i = 1; i < tr.length; i++) {
-        let tdNombre = tr[i].getElementsByTagName("td")[0];
-        let tdTel = tr[i].getElementsByTagName("td")[1];
-
-        if (tdNombre || tdTel) {
-            let texto = (tdNombre.textContent + tdTel.textContent).toLowerCase();
-            tr[i].style.display = texto.indexOf(filter) > -1 ? "" : "none";
-        }
-    }
+    rows.forEach(row => {
+        const nombre = row.children[0].textContent.toLowerCase();
+        const tel = row.children[1].textContent.toLowerCase();
+        row.style.display = (nombre + tel).includes(filter) ? "" : "none";
+    });
 }
 </script>
 
@@ -135,6 +155,7 @@ table {
 th, td {
     text-align: center;
     border-bottom: 1px solid #eee;
+    padding: 10px;
 }
 
 .btn-activar, .btn-bloquear, .btn-pago {
@@ -142,6 +163,7 @@ th, td {
     border-radius: 5px;
     color: white;
     font-size: 12px;
+    text-decoration: none;
 }
 
 .btn-activar { background: var(--accent); }

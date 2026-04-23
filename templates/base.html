@@ -1,4 +1,4 @@
-<!DOCTYPE html> 
+<!DOCTYPE html>
 <html lang="es">
 <head>
     <meta charset="UTF-8">
@@ -12,7 +12,7 @@
     <!-- COLOR APP -->
     <meta name="theme-color" content="#2c3e50">
 
-    <!-- MANIFEST (modo app) -->
+    <!-- MANIFEST -->
     <link rel="manifest" href="{{ url_for('static', filename='manifest.json') }}">
 
     <!-- LIBRERÍAS -->
@@ -94,7 +94,7 @@
         .user-menu { display: flex; gap: 10px; }
         .nav-link { color: white; text-decoration: none; font-size: 14px; padding: 8px 12px; border-radius: 5px; background: rgba(255,255,255,0.1); }
         .user-btn { background: #34495e; color: white; border: none; padding: 8px 15px; border-radius: 20px; cursor: pointer; display: flex; align-items: center; gap: 8px; }
-        
+
         .dropdown {
             display: none;
             position: absolute;
@@ -107,7 +107,13 @@
             z-index: 2500;
         }
 
-        .dropdown a { display: block; padding: 12px 15px; color: #333; text-decoration: none; border-bottom: 1px solid #f0f0f0; }
+        .dropdown a {
+            display: block;
+            padding: 12px 15px;
+            color: #333;
+            text-decoration: none;
+            border-bottom: 1px solid #f0f0f0;
+        }
 
         @media (max-width: 768px) {
             body { font-size: 18px; }
@@ -116,30 +122,30 @@
         }
     </style>
 </head>
+
 <body>
 
 <div id="toast"></div>
 
 <header class="header">
-    <a href="/" class="header-title">Moto App 🏍️</a>
+    <a href="{{ url_for('login') }}" class="header-title">Moto App 🏍️</a>
+
     <div class="user-menu">
         {% if session.get('user_id') %}
             <button onclick="toggleMenu()" class="user-btn">
                 <i class="fas fa-user-circle"></i> {{ session.get('nombre', 'Usuario') }}
             </button>
+
             <div id="dropdown" class="dropdown">
-                <a href="/logout" style="color: var(--danger);"><i class="fas fa-sign-out-alt"></i> Cerrar sesión</a>
+                <a href="{{ url_for('logout') }}" style="color: var(--danger);">
+                    <i class="fas fa-sign-out-alt"></i> Cerrar sesión
+                </a>
             </div>
         {% else %}
             <a href="{{ url_for('login') }}" class="nav-link">Ingresar</a>
         {% endif %}
     </div>
 </header>
-
-
-
-<main class="container {% if request.path == '/mapa_conductor' %}full-width-container{% endif %}">
-
 
 <main class="container {% if request.path == '/mapa_conductor' %}full-width-container{% endif %}">
     {% block content %}{% endblock %}
@@ -148,14 +154,17 @@
 <script>
 function toggleMenu() {
     const menu = document.getElementById("dropdown");
-    menu.style.display = menu.style.display === "block" ? "none" : "block";
+    if (menu) {
+        menu.style.display = menu.style.display === "block" ? "none" : "block";
+    }
 }
-window.onclick = function(e) {
-    if (!e.target.matches('.user-btn') && !e.target.closest('.user-btn')) {
+
+window.addEventListener("click", function(e) {
+    if (!e.target.closest('.user-btn')) {
         const dropdown = document.getElementById("dropdown");
         if (dropdown) dropdown.style.display = "none";
     }
-};
+});
 </script>
 
 </body>

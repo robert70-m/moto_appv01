@@ -15,11 +15,11 @@ def get_db():
     conn.row_factory = sqlite3.Row
     return conn
 
-def login_required():
-    return "user_id" in session
+def rol(r):
+    return session.get("tipo", "").strip().lower() == r
 
-def rol(ru):
-    return session.get("tipo", "").strip().lower() == ru
+def es_admin():
+    return str(session.get("telefono", "")).strip() == "9513928223"
 
 def crear_tablas():
     conn = get_db()
@@ -62,36 +62,40 @@ crear_tablas()
 # ---------------------- LOGIN ----------------------
 @app.route("/", methods=["GET", "POST"])
 def login():
-    if request.method == "POST":
+    error = None
 
+    if request.method == "POST":
         telefono = request.form["telefono"]
         password = request.form["password"]
 
         conn = get_db()
-        usuario = conn.execute(
+        user = conn.execute(
             "SELECT * FROM usuarios WHERE telefono=? AND password=?",
             (telefono, password)
         ).fetchone()
         conn.close()
 
-        if usuario:
-            session.clear()
-            session["user_id"] = usuario["id"]
-            session["tipo"] = usuario["tipo"].strip().lower()
-            session["telefono"] = usuario["telefono"]
+        if user:
+            tipo = str(user["tipo"]).lower().strip()
+            session.update({
+                "user_id": user["id"],
+                "tipo": tipo,
+                "telefono": user["telefono"],
+                "nombre": user["nombre"]
+            })
 
-            if session["tipo"] == "admin":
+            if tipo == "admin":
                 return redirect(url_for("admin"))
-            if session["tipo"] == "cliente":
-                return redirect(url_for("cliente"))
-            if session["tipo"] == "conductor":
+            elif tipo == "conductor":
                 return redirect(url_for("conductor"))
+            else:
+                return redirect(url_for("cliente"))
+        else:
+            error = "Datos incorrectos"
 
-        return "Credenciales incorrectas"
+    return render_template("login.html", error=error)
 
-    return render_template("login.html")
-
-# ---------------------- REGISTROS ----------------------
+# ---------------------- REGISTRO CLIENTE ----------------------
 @app.route("/registro", methods=["GET", "POST"])
 def registro():
     if request.method == "POST":
@@ -117,7 +121,7 @@ def registro():
 
     return render_template("registro.html")
 
-
+# ---------------------- REGISTRO CONDUCTOR ----------------------
 @app.route("/registro_conductor", methods=["GET", "POST"])
 def registro_conductor():
     if request.method == "POST":
@@ -160,10 +164,9 @@ def cliente():
 
     return render_template("cliente.html", viaje_id=viaje["id"] if viaje else None)
 
-
 @app.route("/pedir_viaje", methods=["POST"])
 def pedir_viaje():
-    if not login_required():
+    if not rol("cliente"):
         return redirect(url_for("login"))
 
     conn = get_db()
@@ -178,6 +181,15 @@ def pedir_viaje():
         return redirect(url_for("cliente"))
 
     d = request.form
+    
+    # Manejo de errores en conversión numérica
+    try:
+        lat = float(d.get("lat", 0))
+        lng = float(d.get("lng", 0))
+        lat_d = float(d.get("lat_destino", 0))
+        lng_d = float(d.get("lng_destino", 0))
+    except ValueError:
+        lat, lng, lat_d, lng_d = 0.0, 0.0, 0.0, 0.0
 
     conn.execute("""
         INSERT INTO viajes (cliente_id, estado, origen, destino, lat, lng, lat_destino, lng_destino)
@@ -186,15 +198,11 @@ def pedir_viaje():
         session["user_id"],
         d.get("origen", ""),
         d.get("destino", ""),
-        float(d.get("lat", 0)),
-        float(d.get("lng", 0)),
-        float(d.get("lat_destino", 0)),
-        float(d.get("lng_destino", 0))
+        lat, lng, lat_d, lng_d
     ))
 
     conn.commit()
     conn.close()
-
     return redirect(url_for("cliente"))
 
 # ---------------------- CONDUCTOR ----------------------
@@ -214,7 +222,6 @@ def conductor():
 
     return render_template("conductor.html", viaje=dict(viaje) if viaje else None)
 
-
 @app.route("/viajes_disponibles")
 def viajes_disponibles():
     if not rol("conductor"):
@@ -226,24 +233,35 @@ def viajes_disponibles():
 
     return render_template("viajes.html", viajes=[dict(v) for v in viajes])
 
-
 @app.route("/aceptar_viaje/<int:id>")
 def aceptar_viaje(id):
     if not rol("conductor"):
         return redirect(url_for("login"))
 
     conn = get_db()
-
     conn.execute("""
         UPDATE viajes
         SET conductor_id=?, estado='aceptado'
         WHERE id=? AND estado='pendiente'
     """, (session["user_id"], id))
-
     conn.commit()
     conn.close()
 
     return redirect(url_for("conductor"))
+
+@app.route("/cambiar_estado_viaje/<int:id>/<nuevo_estado>")
+def cambiar_estado_viaje(id, nuevo_estado):
+    if not rol("conductor"):
+        return redirect(url_for("login"))
+
+    conn = get_db()
+    conn.execute("UPDATE viajes SET estado=? WHERE id=?", (nuevo_estado, id))
+    conn.commit()
+    conn.close()
+
+    return redirect(url_for("viajes_disponibles" if nuevo_estado == "finalizado" else "conductor"))
+
+# ---------------------- API ----------------------
 @app.route("/api_viajes")
 def api_viajes():
     conn = get_db()
@@ -251,159 +269,37 @@ def api_viajes():
     conn.close()
     return jsonify({"viajes": [dict(v) for v in viajes]})
 
-@app.route("/aceptar_viaje_ajax/<int:id>", methods=["POST"])
-def aceptar_viaje_ajax(id):
-    if session.get("tipo") != "conductor": return jsonify({"ok": False})
-    conn = get_db()
-    conn.execute("UPDATE viajes SET conductor_id=?, estado='aceptado' WHERE id=? AND estado='pendiente'", (session["user_id"], id))
-    conn.commit()
-    conn.close()
-    return jsonify({"ok": True})
 @app.route("/api/viaje_cliente")
 def api_viaje_cliente():
     user_id = session.get("user_id")
+    if not user_id:
+        return jsonify({"viaje": None})
 
     conn = get_db()
-
     viaje = conn.execute("""
         SELECT * FROM viajes
-        WHERE cliente_id = ?
-        AND estado != 'finalizado'
+        WHERE cliente_id=? AND estado != 'finalizado'
         ORDER BY id DESC LIMIT 1
     """, (user_id,)).fetchone()
-
     conn.close()
 
-    return {"viaje": dict(viaje) if viaje else None}
-@app.route("/actualizar_ubicacion", methods=["POST"])
-def actualizar_ubicacion():
-    if "user_id" in session:
-        conn = get_db()
-        conn.execute("UPDATE usuarios SET lat=?, lng=? WHERE id=?", (request.form.get("lat"), request.form.get("lng"), session["user_id"]))
-        conn.commit()
-        conn.close()
-    return "OK"
+    return jsonify({"viaje": dict(viaje) if viaje else None})
 
-@app.route("/toggle_conductor/<int:id>")
-def toggle_conductor(id):
+@app.route("/aceptar_viaje_ajax/<int:id>", methods=["POST"])
+def aceptar_viaje_ajax(id):
+    if not rol("conductor"):
+        return jsonify({"ok": False})
+
     conn = get_db()
-    u = conn.execute("SELECT activo FROM usuarios WHERE id=?", (id,)).fetchone()
-    if u:
-        conn.execute("UPDATE usuarios SET activo=? WHERE id=?", (0 if u["activo"] == 1 else 1, id))
-        conn.commit()
-    conn.close()
-    return redirect(url_for("admin"))
-@app.route("/pagar_conductor/<int:id>")
-def pagar_conductor(id):
-    conn = get_db()
-    conn.execute("UPDATE usuarios SET fecha_pago=? WHERE id=?", (datetime.now().strftime("%Y-%m-%d"), id))
+    conn.execute("""
+        UPDATE viajes
+        SET conductor_id=?, estado='aceptado'
+        WHERE id=? AND estado='pendiente'
+    """, (session["user_id"], id))
     conn.commit()
     conn.close()
-    return redirect(url_for("admin"))
 
-@app.route("/api/viaje_actual")
-def api_viaje_actual():
-    if not session.get("user_id"):
-        return {"viaje": None}
-
-    conn = get_db()
-
-    viaje = conn.execute("""
-        SELECT * FROM viajes
-        WHERE conductor_id = ?
-        AND estado IN ('aceptado', 'en_camino', 'recogido')
-        ORDER BY id DESC LIMIT 1
-    """, (session["user_id"],)).fetchone()
-
-    conn.close()
-
-    if viaje:
-        return {"viaje": dict(viaje)}
-    else:
-        return {"viaje": None}
-@app.route("/cancelar_viaje/<int:id>")
-def cancelar_viaje(id):
-
-    # 🔒 validar sesión
-    if not session.get("user_id"):
-        return redirect(url_for("login"))
-
-    conn = get_db()
-
-    try:
-        # 🔴 Solo cancelar si es del cliente y está pendiente
-        viaje = conn.execute("""
-            SELECT * FROM viajes
-            WHERE id = ? AND cliente_id = ? AND estado = 'pendiente'
-        """, (id, session["user_id"])).fetchone()
-
-        if not viaje:
-            return redirect(url_for("cliente"))
-
-        # 🟢 cancelar
-        conn.execute("""
-            UPDATE viajes
-            SET estado = 'cancelado'
-            WHERE id = ?
-        """, (id,))
-        conn.commit()
-
-    except Exception as e:
-        print("ERROR cancelar_viaje:", e)
-
-    finally:
-        conn.close()
-
-    return redirect(url_for("cliente"))
-@app.route("/verificar_viajes")
-def verificar_viajes():
-    try:
-        ultimo_id = int(request.args.get("ultimo_id", 0))
-    except:
-        ultimo_id = 0
-
-    conn = get_db()
-
-    viaje = conn.execute("""
-        SELECT id FROM viajes 
-        WHERE estado = 'pendiente' AND id > ?
-        ORDER BY id DESC LIMIT 1
-    """, (ultimo_id,)).fetchone()
-
-    conn.close()
-
-    if viaje:
-        return {"nuevo_viaje": True, "id": viaje["id"]}
-    else:
-        return {"nuevo_viaje": False}
-
-
-@app.route("/verificar_cancelaciones")
-def verificar_cancelaciones():
-    user_id = session.get("user_id")
-
-    try:
-        ultimo_id = int(request.args.get("ultimo_id", 0))
-    except:
-        ultimo_id = 0
-
-    conn = get_db()
-
-    cancelado = conn.execute("""
-        SELECT id FROM viajes
-        WHERE conductor_id = ?
-        AND estado = 'cancelado'
-        AND id > ?
-        ORDER BY id DESC LIMIT 1
-    """, (user_id, ultimo_id)).fetchone()
-
-    conn.close()
-
-    if cancelado:
-        return {"cancelado": True, "id": cancelado["id"]}
-    else:
-        return {"cancelado": False}
-
+    return jsonify({"ok": True})
 
 # ---------------------- ADMIN ----------------------
 @app.route("/admin")
@@ -413,89 +309,43 @@ def admin():
 
     conn = get_db()
     conductores = conn.execute("SELECT * FROM usuarios WHERE tipo='conductor'").fetchall()
-
-    lista = []
-    for c in conductores:
-        lista.append(dict(c))
-
     conn.close()
-    return render_template("admin.html", conductores=lista)
-@app.route("/cambiar_estado_viaje/<int:id>/<nuevo_estado>")
-def cambiar_estado_viaje(id, nuevo_estado):
-    if session.get("tipo") != "conductor":
-        return redirect(url_for("login"))
 
+    return render_template("admin.html", conductores=[dict(c) for c in conductores])
+
+# ---------------------- RESET ----------------------
+@app.route("/reset_conductores")
+def reset_conductores():
+    if not es_admin(): return "Acceso denegado", 403
     conn = get_db()
-    # Actualizamos el estado en la base de datos
-    conn.execute("UPDATE viajes SET estado = ? WHERE id = ?", (nuevo_estado, id))
+    conn.execute("DELETE FROM usuarios WHERE tipo='conductor'")
     conn.commit()
     conn.close()
+    return "Conductores eliminados"
 
-    # Si el viaje terminó, lo mandamos a ver nuevos viajes
-    if nuevo_estado == 'finalizado':
-        return redirect(url_for("viajes_disponibles"))
-    
-    # Si no, regresamos al panel del conductor para ver el mapa
-    return redirect(url_for("conductor"))
-
-@app.route("/finalizar_viaje/<int:id>")
-def finalizar_viaje(id):
+@app.route("/reset_clientes")
+def reset_clientes():
+    if not es_admin(): return "Acceso denegado", 403
     conn = get_db()
-    conn.execute("UPDATE viajes SET estado='finalizado' WHERE id=?", (id,))
+    conn.execute("DELETE FROM usuarios WHERE tipo='cliente'")
     conn.commit()
     conn.close()
-    return redirect(url_for("conductor"))
+    return "Clientes eliminados"
+
+@app.route("/reset_viajes")
+def reset_viajes():
+    if not es_admin(): return "Acceso denegado", 403
+    conn = get_db()
+    conn.execute("DELETE FROM viajes")
+    conn.commit()
+    conn.close()
+    return "Viajes eliminados"
 
 # ---------------------- LOGOUT ----------------------
 @app.route("/logout")
 def logout():
     session.clear()
     return redirect(url_for("login"))
-
-# ---------------------- RESET (RESTAURADO) ----------------------
-
-def es_admin():
-    return session.get("telefono", "").strip() == "9513928223"
-
-
-@app.route("/reset_conductores")
-def reset_conductores():
-    if not es_admin():
-        return "Acceso denegado", 403
-
-    conn = get_db()
-    conn.execute("DELETE FROM usuarios WHERE tipo='conductor'")
-    conn.commit()
-    conn.close()
-
-    return "Conductores eliminados"
-
-
-@app.route("/reset_clientes")
-def reset_clientes():
-    if not es_admin():
-        return "Acceso denegado", 403
-
-    conn = get_db()
-    conn.execute("DELETE FROM usuarios WHERE tipo='cliente'")
-    conn.commit()
-    conn.close()
-
-    return "Clientes eliminados"
-
-
-@app.route("/reset_viajes")
-def reset_viajes():
-    if not es_admin():
-        return "Acceso denegado", 403
-
-    conn = get_db()
-    conn.execute("DELETE FROM viajes")
-    conn.commit()
-    conn.close()
-
-    return "Viajes eliminados"
-
 
 if __name__ == "__main__":
     app.run(debug=True)

@@ -6,41 +6,50 @@
     <h2>Iniciar sesión 🏍️</h2>
 
     <form method="POST" autocomplete="off">
-        <input type="tel" 
-               name="telefono" 
-               placeholder="Tu número de Teléfono" 
-               inputmode="numeric"
-               pattern="[0-9]*"
-               required 
-               style="margin-bottom: 10px;">
-        
-        <input name="password" 
-               type="password" 
-               placeholder="Tu Contraseña" 
-               autocomplete="current-password" 
-               required>
+        <input 
+            type="tel"
+            name="telefono"
+            placeholder="Tu número de Teléfono"
+            inputmode="numeric"
+            pattern="[0-9]+"
+            required
+            style="margin-bottom: 10px;"
+        >
 
-        <button type="submit" style="margin-top: 25px;">Entrar a Moto App</button>
+        <input 
+            name="password"
+            type="password"
+            placeholder="Tu Contraseña"
+            autocomplete="current-password"
+            required
+        >
+
+        <button type="submit" style="margin-top: 25px;">
+            Entrar a Moto App
+        </button>
     </form>
 
     <div style="margin-top: 25px; border-top: 1px solid #eee; padding-top: 15px;">
-        <p style="font-size: 14px; color: #7f8c8d; margin-bottom: 5px;">¿Aún no tienes cuenta?</p>
-        <a href="/registro" style="font-weight: bold; color: var(--primary); text-decoration: none;">
+        <p style="font-size: 14px; color: #7f8c8d; margin-bottom: 5px;">
+            ¿Aún no tienes cuenta?
+        </p>
+
+        <a href="{{ url_for('registro') }}" 
+           style="font-weight: bold; color: var(--primary); text-decoration: none;">
             <i class="fas fa-user-plus"></i> Crear una cuenta nueva
         </a>
     </div>
 
     <div style="margin-top: 20px; background: #f8f9fa; padding: 15px; border-radius: 10px;">
-        <p style="font-size: 14px; color: #2c3e50; margin-bottom: 5px; font-weight: bold;">
-            ¿Quieres usar la aplicacion como conductor haz clik en el siguiente boton?
+        <p style="font-size: 14px; color: #2c3e50; margin-bottom: 10px; font-weight: bold;">
+            ¿Quieres usar la aplicación como conductor? Da clic aquí:
         </p>
-        <a href="https://wa.me/5219513928223?text={{ (
-    'Hola, soy ' ~ (session.get('nombre', 'usuario')) ~ 
-    ' y quiero informes para trabajar como ' ~ (session.get('tipo', 'conductor'))
-) | urlencode }}" 
-target="_blank">
-    WhatsApp
-</a>
+
+        <a href="https://wa.me/5219513928223?text={{ 
+            ('Hola, quiero informes para trabajar como conductor en Moto App') | urlencode 
+        }}" target="_blank">
+            <button type="button">Contactar por WhatsApp</button>
+        </a>
     </div>
 
     {% if error %}
@@ -53,13 +62,13 @@ target="_blank">
 </div>
 
 <script>
-    document.addEventListener("DOMContentLoaded", function() {
-        {% if error %}
-            if (typeof mostrarToast === "function") {
-                mostrarToast("{{ error }}", "error");
-            }
-        {% endif %}
-    });
+document.addEventListener("DOMContentLoaded", function() {
+    {% if error %}
+        if (typeof mostrarToast === "function") {
+            mostrarToast("{{ error|escape }}", "error");
+        }
+    {% endif %}
+});
 </script>
 
 {% endblock %}

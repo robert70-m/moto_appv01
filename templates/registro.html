@@ -10,7 +10,7 @@
         <p style="color: #666;">Crea tu cuenta para pedir tus viajes</p>
     </div>
 
-    <form action="/registro" method="POST">
+    <form action="{{ url_for('registro') }}" method="POST" autocomplete="off">
         <input type="hidden" name="tipo" value="cliente">
 
         <div style="margin-bottom: 15px;">
@@ -24,15 +24,28 @@
             <label style="font-weight: bold; display: block; margin-bottom: 5px;">
                 <i class="fas fa-phone"></i> Número de Teléfono
             </label>
-            <input type="text" name="telefono" placeholder="10 dígitos" required 
-                   pattern="[0-9]{10}" title="Por favor ingresa 10 dígitos">
+            <input 
+                type="tel"
+                name="telefono"
+                placeholder="10 dígitos"
+                required
+                pattern="[0-9]{10}"
+                inputmode="numeric"
+                title="Por favor ingresa 10 dígitos"
+            >
         </div>
 
         <div style="margin-bottom: 15px;">
             <label style="font-weight: bold; display: block; margin-bottom: 5px;">
                 <i class="fas fa-lock"></i> Contraseña
             </label>
-            <input type="password" name="password" placeholder="Crea una clave segura" required>
+            <input 
+                type="password"
+                name="password"
+                placeholder="Mínimo 4 caracteres"
+                minlength="4"
+                required
+            >
         </div>
 
         <button type="submit" 
@@ -43,7 +56,7 @@
 
     <div style="text-align: center; margin-top: 20px; border-top: 1px solid #eee; padding-top: 20px;">
         <p>¿Ya tienes una cuenta?</p>
-        <a href="/login" style="color: var(--primary); font-weight: bold; text-decoration: none;">
+        <a href="{{ url_for('login') }}" style="color: var(--primary); font-weight: bold; text-decoration: none;">
             Inicia Sesión aquí
         </a>
     </div>
