@@ -322,6 +322,24 @@ def aceptar_viaje_ajax(id):
 
     return jsonify({"ok": True})
 
+@app.route('/toggle_conductor/<int:id>')
+def toggle_conductor(id):
+    if session.get('tipo') != 'admin':
+        return redirect(url_for('login'))
+    
+    conn = get_db_connection()
+    # Primero vemos el estado actual
+    conductor = conn.execute('SELECT activo FROM usuarios WHERE id = ?', (id,)).fetchone()
+    
+    if conductor:
+        # Si es 1 (activo) lo ponemos en 0, y viceversa
+        nuevo_estado = 0 if conductor['activo'] == 1 else 1
+        conn.execute('UPDATE usuarios SET activo = ? WHERE id = ?', (nuevo_estado, id))
+        conn.commit()
+    
+    conn.close()
+    return redirect(url_for('admin'))
+
 # ---------------------- ADMIN ----------------------
 @app.route("/admin")
 def admin():
