@@ -81,12 +81,11 @@ def login():
 
         if user:
             tipo = str(user["tipo"]).lower().strip()
-            session.update({
-                "user_id": user["id"],
-                "tipo": tipo,
-                "telefono": user["telefono"],
-                "nombre": user["nombre"]
-            })
+            session.clear()
+            session["user_id"] = user["id"]
+            session["tipo"] = tipo
+            session["telefono"] = user["telefono"]
+            session["nombre"] = user["nombre"]
 
             if tipo == "admin":
                 return redirect(url_for("admin"))
