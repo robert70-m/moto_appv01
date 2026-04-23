@@ -21,8 +21,7 @@ def rol(r):
     return tipo.strip().lower() == r.strip().lower()
 
 def es_admin():
-    return str(session.get("telefono", "")).strip() == "9513928223"
-
+    return session.get("rol") == "admin"
 def crear_tablas():
     conn = get_db()
     cursor = conn.cursor()
@@ -152,6 +151,17 @@ def registro_conductor():
         return redirect(url_for("login"))
 
     return render_template("registro_conductor.html")
+@app.route("/conductor")
+def conductor():
+    # 🔒 Verificar sesión
+    if "user_id" not in session:
+        return redirect(url_for("login"))
+
+    # 🔒 Verificar rol
+    if session.get("rol") != "conductor":
+        return "No autorizado", 403
+
+    return render_template("conductor.html")
 
 # ---------------------- CLIENTE ----------------------
 @app.route("/cliente")
