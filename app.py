@@ -230,8 +230,10 @@ def cancelar_viaje(viaje_id):
 # ---------------------- CONDUCTOR ----------------------
 @app.route("/conductor")
 def conductor():
-    if not rol("conductor"):
-        return redirect(url_for("login"))
+    print("SESSION:", dict(session))
+
+    if session.get("tipo") != "conductor":
+        return "Acceso denegado", 403
 
     conn = get_db()
     viaje = conn.execute("""
@@ -243,6 +245,7 @@ def conductor():
     conn.close()
 
     return render_template("conductor.html", viaje=dict(viaje) if viaje else None)
+
 @app.route('/pagar_conductor/<int:id>')
 def pagar_conductor(id):
     conn = get_db_connection()
