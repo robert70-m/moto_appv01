@@ -374,15 +374,17 @@ def admin():
 
     return render_template("admin.html", conductores=[dict(c) for c in conductores])
 # ---------------------- RESET ----------------------
-@app.route("/reset_conductores")
+@app.route("/reset_conductores", methods=["GET", "POST"])
 def reset_conductores():
-    if not es_admin(): return "Acceso denegado", 403
+    if not es_admin():
+        return "Acceso denegado", 403
+
     conn = get_db()
-    conn.execute("DELETE FROM usuarios WHERE tipo='conductor'")
+    conn.execute("DELETE FROM usuarios WHERE tipo = ?", ("conductor",))
     conn.commit()
     conn.close()
-    return "Conductores eliminados"
 
+    return "Conductores eliminados"
 @app.route("/reset_clientes")
 def reset_clientes():
     if not es_admin(): return "Acceso denegado", 403
