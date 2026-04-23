@@ -14,9 +14,11 @@ def get_db():
     conn = sqlite3.connect(DB_PATH)
     conn.row_factory = sqlite3.Row
     return conn
-
 def rol(r):
-    return session.get("tipo", "").strip().lower() == r
+    tipo = session.get("tipo")
+    if not tipo:
+        return False
+    return tipo.strip().lower() == r.strip().lower()
 
 def es_admin():
     return str(session.get("telefono", "")).strip() == "9513928223"
@@ -242,6 +244,14 @@ def conductor():
     conn.close()
 
     return render_template("conductor.html", viaje=dict(viaje) if viaje else None)
+@app.route('/pagar_conductor/<int:id>')
+def pagar_conductor(id):
+    conn = get_db_connection()
+    # Aquí pon la lógica que tenías (ejemplo: resetear saldo o estado de pago)
+    conn.execute('UPDATE usuarios SET pago_pendiente = 0 WHERE id = ?', (id,))
+    conn.commit()
+    conn.close()
+    return redirect(url_for('admin'))
 
 @app.route("/viajes_disponibles")
 def viajes_disponibles():
@@ -343,7 +353,7 @@ def toggle_conductor(id):
 # ---------------------- ADMIN ----------------------
 @app.route("/admin")
 def admin():
-    if not rol("admin"):
+    if session.get("tipo") != "admin":
         return "Acceso denegado", 403
 
     conn = get_db()
@@ -351,7 +361,6 @@ def admin():
     conn.close()
 
     return render_template("admin.html", conductores=[dict(c) for c in conductores])
-
 # ---------------------- RESET ----------------------
 @app.route("/reset_conductores")
 def reset_conductores():
