@@ -564,6 +564,39 @@ def verificar_cancelaciones():
         return jsonify({"cancelado": True, "id": viaje["id"]})
     else:
         return jsonify({"cancelado": False})
+from werkzeug.security import generate_password_hash
 
+@app.route("/admin/cambiar_password", methods=["POST"])
+def cambiar_password():
+    # 🔒 Verificar que sea admin
+    if "user_id" not in session or session.get("tipo") != "admin":
+        return redirect(url_for("login"))
+
+    nueva = request.form.get("nueva_password", "").strip()
+    confirmar = request.form.get("confirmar_password", "").strip()
+
+    # 🔴 Validaciones
+    if not nueva or not confirmar:
+        return "Completa todos los campos"
+
+    if nueva != confirmar:
+        return "Las contraseñas no coinciden"
+
+    if len(nueva) < 6:
+        return "La contraseña debe tener al menos 6 caracteres"
+
+    # 🔐 Generar hash
+    hash_nuevo = generate_password_hash(nueva)
+
+    # 💾 Guardar en BD
+    conn = get_db()
+    conn.execute(
+        "UPDATE usuarios SET password=? WHERE id=?",
+        (hash_nuevo, session["user_id"])
+    )
+    conn.commit()
+    conn.close()
+
+    return redirect(url_for("admin"))
 if __name__ == "__main__":
     app.run(debug=True)
