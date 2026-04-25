@@ -632,6 +632,7 @@ def cambiar_password():
 @app.after_request
 def add_header(response):
     response.headers["Cache-Control"] = "no-store, no-cache, must-revalidate"
+
     return response
 from flask import jsonify
 
@@ -639,34 +640,39 @@ from flask import jsonify
 def api_estado_viaje(viaje_id):
     conn = get_db()
 
-    viaje = conn.execute("""
-        SELECT v.estado,
-               IFNULL(c.nombre, '') as nombre,
-               IFNULL(c.unidad, '') as unidad,
-               IFNULL(c.color, '') as color
-        FROM viajes v
-        LEFT JOIN conductores c ON v.conductor_id = c.id
-        WHERE v.id = ?
-    """, (viaje_id,)).fetchone()
-
-    conn.close()
+    # 1️⃣ Obtener viaje
+    viaje = conn.execute(
+        "SELECT estado, conductor_id FROM viajes WHERE id=?",
+        (viaje_id,)
+    ).fetchone()
 
     if not viaje:
+        conn.close()
         return jsonify({"estado": "cancelado"})
+
+    conductor = {"nombre": "", "unidad": "", "color": ""}
+
+    # 2️⃣ Si hay conductor, buscarlo aparte
+    if viaje["conductor_id"]:
+        c = conn.execute(
+            "SELECT nombre, unidad, color FROM conductores WHERE id=?",
+            (viaje["conductor_id"],)
+        ).fetchone()
+
+        if c:
+            conductor = {
+                "nombre": c["nombre"] or "",
+                "unidad": c["unidad"] or "",
+                "color": c["color"] or ""
+            }
+
+    conn.close()
 
     return jsonify({
         "estado": viaje["estado"],
-        "conductor": viaje["nombre"],
-        "unidad": viaje["unidad"],
-        "color": viaje["color"]
+        "conductor": conductor["nombre"],
+        "unidad": conductor["unidad"],
+        "color": conductor["color"]
     })
-@app.route("/debug_viaje/<int:viaje_id>")
-def debug_viaje(viaje_id):
-    conn = get_db()
-    viaje = conn.execute("SELECT * FROM viajes WHERE id=?", (viaje_id,)).fetchone()
-    conn.close()
-
-    return dict(viaje) if viaje else {"error": "no encontrado"}
-
 if __name__ == "__main__":
     app.run(debug=True)
