@@ -1,4 +1,4 @@
-{% extends "base.html" %}
+{% extends "base.html" %} 
 
 {% block content %}
 
@@ -107,7 +107,6 @@ document.addEventListener("DOMContentLoaded", function() {
         });
     }
 
-    // GPS
     if (navigator.geolocation) {
         navigator.geolocation.watchPosition(function(pos) {
             let lat = pos.coords.latitude;
@@ -134,11 +133,9 @@ document.addEventListener("DOMContentLoaded", function() {
         });
     }
 
-    // MONITOREO DE ESTADO DEL VIAJE
     function vigilarViaje() {
         const viajeId = "{{ viaje_id }}";
         
-        // Si no hay un viaje activo, ocultamos el panel y salimos
         if (!viajeId || viajeId === "None" || viajeId === "") {
             document.getElementById("status_conductor").style.display = "none";
             return;
@@ -156,27 +153,23 @@ document.addEventListener("DOMContentLoaded", function() {
             const tituloEstado = document.getElementById("estado_titulo");
             const textoEstadoDetalle = document.getElementById("texto_estado");
 
-            // Caso 1: El viaje terminó o se canceló
             if (d.estado === "finalizado" || d.estado === "cancelado") {
                 tituloEstado.innerText = d.estado === "finalizado" ? "¡Llegaste a tu destino! 🏁" : "Viaje Cancelado ❌";
                 textoEstadoDetalle.innerText = d.estado === "finalizado" ? "Gracias por viajar con nosotros." : "El viaje ya no está activo.";
                 if (btnCancelar) btnCancelar.style.display = "none";
                 
-                // Dejar el mensaje unos segundos y luego limpiar la pantalla
                 setTimeout(() => { location.href = "{{ url_for('index') }}"; }, 5000);
                 return;
             }
 
-            // Caso 2: El viaje está en curso (Aceptado, en camino, recogido o cerca)
             if (["aceptado", "en_camino", "recogido", "cerca"].includes(d.estado)) {
                 panelStatus.style.display = "block";
-                if (btnCancelar) btnCancelar.style.display = "none"; // Ya no se puede cancelar si ya vienen por ti
+                if (btnCancelar) btnCancelar.style.display = "none";
 
                 document.getElementById("nombre_en_pantalla").innerText = d.conductor || "Asignado";
                 document.getElementById("unidad_en_pantalla").innerText = d.unidad || "---";
                 document.getElementById("color_en_pantalla").innerText = d.color || "---";
 
-                // Traducción de estados para el cliente
                 const mapaEstados = {
                     "aceptado": "¡Conductor asignado! Preparando salida.",
                     "en_camino": "El conductor va hacia tu ubicación 🛵",
@@ -187,5 +180,19 @@ document.addEventListener("DOMContentLoaded", function() {
                 tituloEstado.innerText = "Viaje en curso";
                 textoEstadoDetalle.innerText = mapaEstados[d.estado] || d.estado;
 
-                // Alerta especial si está cerca
-                if (d.estado === "cerca
+                if (d.estado === "cerca" && !alertaMostrada) {
+                    alertaCerca();
+                    alertaMostrada = true;
+                }
+            }
+
+        })
+        .catch(err => console.error(err))
+        .finally(() => ejecutando = false);
+    }
+
+    setInterval(vigilarViaje, 3000);
+});
+</script>
+
+{% endblock %}
