@@ -660,5 +660,13 @@ def api_estado_viaje(viaje_id):
         "unidad": viaje["unidad"],
         "color": viaje["color"]
     })
+@app.route("/debug_viaje/<int:viaje_id>")
+def debug_viaje(viaje_id):
+    conn = get_db()
+    viaje = conn.execute("SELECT * FROM viajes WHERE id=?", (viaje_id,)).fetchone()
+    conn.close()
+
+    return dict(viaje) if viaje else {"error": "no encontrado"}
+
 if __name__ == "__main__":
     app.run(debug=True)
