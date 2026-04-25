@@ -16,8 +16,11 @@
     {% endif %}
 
     <form action="{{ url_for('pedir_viaje') }}" method="POST">
+        <label>Punto de partida:</label>
         <input type="text" id="input_origen" name="origen" placeholder="Detectando ubicación..." readonly required>
-        <input type="text" id="input_destino" name="destino" placeholder="Selecciona destino" readonly required>
+
+        <label>Destino:</label>
+        <input type="text" id="input_destino" name="destino" placeholder="Selecciona destino en el mapa" readonly required>
 
         <input type="hidden" id="lat" name="lat">
         <input type="hidden" id="lng" name="lng">
@@ -28,16 +31,18 @@
     </form>
 
     {% if viaje_id %}
-    <a id="btn-cancelar" href="{{ url_for('cancelar_viaje', viaje_id=viaje_id) }}">
-        <button style="background:#e74c3c;color:white;width:100%;">
+    <a id="btn-cancelar" href="{{ url_for('cancelar_viaje', viaje_id=viaje_id) }}"
+       onclick="return confirm('¿Seguro que deseas cancelar el viaje?')">
+        <button style="margin-top:10px;background:#e74c3c;color:white;padding:12px;border:none;border-radius:6px;width:100%;">
             ❌ Cancelar Viaje
         </button>
     </a>
     {% endif %}
 </div>
 
-<!-- ESTADO DEL VIAJE -->
-<div id="status_conductor" style="display:none; padding:15px; background:#d4edda; border-radius:10px; margin:10px 0;">
+<!-- STATUS VIAJE -->
+<div id="status_conductor" style="display:none; padding:15px; background:#d4edda; border-radius:10px; margin:10px 0; border:1px solid #c3e6cb;">
+
     <p id="estado" style="font-weight:bold;">Esperando viaje...</p>
 
     <p>👤 Conductor: <span id="nombre_en_pantalla"></span></p>
@@ -47,15 +52,32 @@
     <p>Estado: <span id="texto_estado"></span></p>
 </div>
 
-<div id="map" style="height:450px;"></div>
+<!-- MAPA -->
+<div class="card" style="padding:10px;">
+    <div id="map" style="height:450px;width:100%;border-radius:10px;"></div>
+</div>
 
 <script>
 document.addEventListener("DOMContentLoaded", function() {
 
-    let map, markerUser, markerDest;
-    let first = true;
-    let alertShown = false;
-    let running = false;
+    let map = null;
+    let marcadorUsuario = null;
+    let marcadorDestino = null;
+    let primeraVez = true;
+    let alertaMostrada = false;
+    let ejecutando = false;
+
+    const iconoCliente = L.icon({
+        iconUrl: 'https://cdn-icons-png.flaticon.com/512/684/684908.png',
+        iconSize: [35,35],
+        iconAnchor: [17,35]
+    });
+
+    const iconoDestino = L.icon({
+        iconUrl: 'https://cdn-icons-png.flaticon.com/512/447/447031.png',
+        iconSize: [35,35],
+        iconAnchor: [17,35]
+    });
 
     function alertaCerca() {
         let div = document.createElement("div");
@@ -74,54 +96,64 @@ document.addEventListener("DOMContentLoaded", function() {
             attribution: '© OpenStreetMap'
         }).addTo(map);
 
-        map.on("click", e => {
-            document.getElementById("lat_destino").value = e.latlng.lat;
-            document.getElementById("lng_destino").value = e.latlng.lng;
-            document.getElementById("input_destino").value = "Destino marcado";
+        map.on('click', function(e) {
+
+            let latD = e.latlng.lat;
+            let lngD = e.latlng.lng;
+
+            document.getElementById("lat_destino").value = latD;
+            document.getElementById("lng_destino").value = lngD;
+            document.getElementById("input_destino").value = "Destino seleccionado ✅";
+
+            if (marcadorDestino) {
+                marcadorDestino.setLatLng([latD, lngD]);
+            } else {
+                marcadorDestino = L.marker([latD, lngD], {icon: iconoDestino}).addTo(map);
+            }
         });
     }
 
     // GPS
     if (navigator.geolocation) {
-        navigator.geolocation.watchPosition(pos => {
+        navigator.geolocation.watchPosition(function(pos) {
 
             let lat = pos.coords.latitude;
             let lng = pos.coords.longitude;
 
             document.getElementById("lat").value = lat;
             document.getElementById("lng").value = lng;
-            document.getElementById("input_origen").value = "Ubicación OK";
+            document.getElementById("input_origen").value = "Ubicación detectada ✅";
 
             if (!map) initMap(lat, lng);
 
-            if (!markerUser) {
-                markerUser = L.marker([lat, lng]).addTo(map);
+            if (marcadorUsuario) {
+                marcadorUsuario.setLatLng([lat, lng]);
             } else {
-                markerUser.setLatLng([lat, lng]);
+                marcadorUsuario = L.marker([lat, lng], {icon: iconoCliente}).addTo(map);
             }
 
-            if (first) {
+            if (primeraVez) {
                 map.setView([lat, lng], 16);
-                first = false;
+                primeraVez = false;
             }
 
-        }, () => {
+        }, function() {
             document.getElementById("input_origen").value = "Activa GPS";
         });
     }
 
-    // 🔥 SOLO UN CONTROL DE VIAJE
-    function vigilar() {
+    // CONTROL DE VIAJE (ÚNICO)
+    function vigilarViaje() {
 
-        if (running) return;
-        running = true;
+        if (ejecutando) return;
+        ejecutando = true;
 
         const id = "{{ viaje_id }}";
-        const cancel = document.getElementById("btn-cancelar");
+        const btn = document.getElementById("btn-cancelar");
 
         if (!id || id === "None") {
             document.getElementById("status_conductor").style.display = "none";
-            running = false;
+            ejecutando = false;
             return;
         }
 
@@ -135,7 +167,7 @@ document.addEventListener("DOMContentLoaded", function() {
             if (d.estado === "finalizado") {
                 estado.innerText = "Viaje finalizado";
                 cont.style.display = "none";
-                if (cancel) cancel.style.display = "none";
+                if (btn) btn.style.display = "none";
                 return;
             }
 
@@ -147,16 +179,16 @@ document.addEventListener("DOMContentLoaded", function() {
                 document.getElementById("unidad_en_pantalla").innerText = d.unidad || "N/A";
                 document.getElementById("color_en_pantalla").innerText = d.color || "N/A";
 
-                if (cancel) cancel.style.display = "none";
+                if (btn) btn.style.display = "none";
 
                 if (d.estado === "cerca") {
-                    if (!alertShown) {
+                    if (!alertaMostrada) {
                         alertaCerca();
-                        alertShown = true;
+                        alertaMostrada = true;
                     }
                     document.getElementById("texto_estado").innerText = "Cerca 🚨";
                 } else {
-                    alertShown = false;
+                    alertaMostrada = false;
                     document.getElementById("texto_estado").innerText = d.estado;
                 }
 
@@ -164,15 +196,16 @@ document.addEventListener("DOMContentLoaded", function() {
             }
 
             if (d.estado === "pendiente") {
-                if (cancel) cancel.style.display = "block";
+                if (btn) btn.style.display = "block";
             }
 
         })
-        .finally(() => running = false);
+        .catch(err => console.log(err))
+        .finally(() => ejecutando = false);
     }
 
-    setInterval(vigilar, 3000);
-    vigilar();
+    setInterval(vigilarViaje, 3000);
+    vigilarViaje();
 
 });
 </script>
