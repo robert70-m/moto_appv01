@@ -633,5 +633,29 @@ def cambiar_password():
 def add_header(response):
     response.headers["Cache-Control"] = "no-store, no-cache, must-revalidate"
     return response
+from flask import jsonify
+
+@app.route("/api_estado_viaje/<int:viaje_id>")
+def api_estado_viaje(viaje_id):
+    conn = get_db()
+
+    viaje = conn.execute("""
+        SELECT v.estado, c.nombre, c.unidad, c.color
+        FROM viajes v
+        LEFT JOIN conductores c ON v.conductor_id = c.id
+        WHERE v.id = ?
+    """, (viaje_id,)).fetchone()
+
+    conn.close()
+
+    if not viaje:
+        return jsonify({"estado": "cancelado"})
+
+    return jsonify({
+        "estado": viaje["estado"],
+        "conductor": viaje["nombre"],
+        "unidad": viaje["unidad"],
+        "color": viaje["color"]
+    })
 if __name__ == "__main__":
     app.run(debug=True)
