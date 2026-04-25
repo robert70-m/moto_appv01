@@ -5,30 +5,30 @@
     <h2 style="text-align: center; color: var(--primary);">Registrar Conductor 🏍️</h2>
 
     <form method="POST" action="{{ url_for('registro_conductor') }}" autocomplete="off">
-        
+
         <label style="font-size: 12px; color: #7f8c8d; font-weight: bold;">DATOS PERSONALES</label>
-        
-        <input 
-            type="text" 
-            name="nombre" 
-            placeholder="Nombre completo" 
+
+        <input
+            type="text"
+            name="nombre"
+            placeholder="Nombre completo"
             required
         >
 
-        <input 
-            type="tel" 
-            name="telefono" 
-            placeholder="Teléfono (10 dígitos)" 
-            required 
+        <input
+            type="tel"
+            name="telefono"
+            placeholder="Teléfono (10 dígitos)"
+            required
             pattern="[0-9]{10}"
             inputmode="numeric"
         >
 
-        <input 
-            type="password" 
-            name="password" 
-            placeholder="Contraseña (mínimo 4 caracteres)" 
-            required 
+        <input
+            type="password"
+            name="password"
+            placeholder="Contraseña (mínimo 4 caracteres)"
+            required
             minlength="4"
         >
 
@@ -37,22 +37,22 @@
                 DATOS DE LA UNIDAD
             </span>
         </div>
-        
-        <input 
-            type="text" 
-            name="numero_unidad" 
-            placeholder="Número de unidad (Ej: M-105)" 
+
+        <input
+            type="text"
+            name="numero_unidad"
+            placeholder="Número de unidad (Ej: M-105)"
             required
         >
 
-        <input 
-            type="text" 
-            name="color_unidad" 
-            placeholder="Color de la moto (Ej: Rojo, Negro, Azul)" 
+        <input
+            type="text"
+            name="color_vehiculo"   ✅
+            placeholder="Color de la moto (Ej: Rojo, Negro, Azul)"
             required
         >
 
-        <button type="submit" 
+        <button type="submit"
                 style="background: var(--accent); color: white; padding: 15px; width: 100%; border: none; border-radius: 10px; font-weight: bold; font-size: 18px; margin-top: 15px; cursor: pointer; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">
             Finalizar Registro 🚀
         </button>

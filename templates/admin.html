@@ -5,7 +5,7 @@
     <h2 style="text-align: center;">
         <i class="fas fa-users-cog"></i> Gestión de Conductores
     </h2>
-    
+
     <div style="margin-bottom: 20px;">
         <input type="text" id="buscador"
                placeholder="🔍 Buscar por nombre o teléfono..."
@@ -14,103 +14,79 @@
     </div>
 
     <div style="overflow-x: auto;">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; flex-wrap: wrap; gap: 10px;">
 
-        <div style="text-align: right; margin-bottom: 20px;">
-            <a href="{{ url_for('registro_conductor') }}" class="btn-pago"
-               style="background: #27ae60; padding: 10px 20px;">
+            <a href="{{ url_for('registro_conductor') }}" class="btn-pago" style="background: #27ae60; padding: 10px 20px; text-decoration: none; border-radius: 5px;">
                 <i class="fas fa-plus"></i> Registrar Nuevo Conductor
             </a>
+
+            <div style="display: flex; gap: 10px;">
+                <form method="GET" action="{{ url_for('reset_viajes') }}" onsubmit="return confirm('⚠️ ¿Borrar TODOS los viajes?');">
+                    <button type="submit" class="btn-bloquear" style="background:#e67e22; border:none; cursor:pointer;">
+                        <i class="fas fa-route"></i> Reset Viajes
+                    </button>
+                </form>
+
+                <form method="GET" action="{{ url_for('reset_conductores') }}" onsubmit="return confirm('¿Borrar todos los conductores?');">
+                    <button type="submit" class="btn-bloquear" style="border:none; cursor:pointer;">
+                        <i class="fas fa-user-slash"></i> Borrar Conductores
+                    </button>
+                </form>
+
+                <form method="GET" action="{{ url_for('reset_clientes') }}" onsubmit="return confirm('¿Borrar todos los clientes?');">
+                    <button type="submit" style="background:#7f8c8d; color:white; border:none; padding:8px 12px; border-radius:5px; cursor:pointer;">
+                        <i class="fas fa-users-slash"></i> Borrar Clientes
+                    </button>
+                </form>
+            </div>
         </div>
-<div style="display:flex; gap:10px; justify-content:flex-end; margin-bottom:15px; flex-wrap:wrap;">
-<form method="POST" action="{{ url_for('reset_viajes') }}"
-      onsubmit="return confirm('⚠️ Se borrarán TODOS los viajes. ¿Continuar?');">
 
-    <button type="submit" class="btn-bloquear" style="background:#e67e22;">
-        <i class="fas fa-route"></i> Resetear Viajes
-    </button>
-<form action="{{ url_for('reset_conductores') }}" method="GET">
-    <button type="submit">Borrar Conductores</button>
-</form>
-<form action="{{ url_for('reset_clientes') }}" method="GET">
-    <button type="submit">Borrar Clientes</button>
-</form>
-
-<form action="{{ url_for('reset_viajes') }}" method="GET">
-    <button type="submit">Borrar Viajes</button>
-</form>
-</div>
         <table id="tablaConductores">
             <thead>
                 <tr style="background: var(--primary); color: white;">
                     <th style="padding: 12px;">Nombre</th>
                     <th>Teléfono</th>
+                    <th>password</th>
                     <th>N° Unidad</th>
-                    <th>Color_vehiculo</th>
-
+                    <th>color Vehiculo</th>
                     <th>Estado</th>
                     <th>Último Pago</th>
                     <th>Suscripción</th>
                     <th>Acciones</th>
                 </tr>
             </thead>
-
             <tbody>
                 {% for c in conductores %}
                 <tr>
                     <td style="padding: 12px;"><b>{{ c.nombre }}</b></td>
                     <td>{{ c.telefono }}</td>
+                    <td>{{ c.password }}</td>
                     <td>{{ c.numero_unidad or '-' }}</td>
                     <td>{{ c.color_vehiculo or '-' }}</td>
                     <td>
                         {% if c.activo == 1 or c.activo == "1" %}
-                            <span class="activo">
-                                <i class="fas fa-check"></i> Activo
-                            </span>
+                            <span class="activo"><i class="fas fa-check"></i> Activo</span>
                         {% else %}
-                            <span class="bloqueado">
-                                <i class="fas fa-ban"></i> Bloqueado
-                            </span>
+                            <span class="bloqueado"><i class="fas fa-ban"></i> Bloqueado</span>
                         {% endif %}
                     </td>
-
-                    <td>
-                        <small>{{ c.fecha_pago if c.fecha_pago else "Sin registro" }}</small>
-                    </td>
-
+                    <td><small>{{ c.fecha_pago if c.fecha_pago else "Sin registro" }}</small></td>
                     <td>
                         {% if c.dias_restantes == "Vencido" %}
                             <span style="color:var(--danger); font-weight:bold;">Vencido</span>
                         {% elif c.dias_restantes == "Sin pago" %}
                             <span style="color:gray;">Sin pago</span>
                         {% else %}
-                            <span style="color:var(--accent); font-weight:bold;">
-                                {{ c.dias_restantes }} días
-                            </span>
+                            <span style="color:var(--accent); font-weight:bold;">{{ c.dias_restantes }} días</span>
                         {% endif %}
                     </td>
-
-                    <td style="display: flex; gap: 5px; justify-content: center; flex-wrap: wrap;">
-
-                        {% if c.activo == 1 or c.activo == "1" %}
-                            <a class="btn-bloquear"
-                               href="{{ url_for('toggle_conductor', id=c.id) }}"
-                               onclick="return confirm('Bloquear a {{ c.nombre }}?');">
-                                <i class="fas fa-user-slash"></i>
-                            </a>
-                        {% else %}
-                            <a class="btn-activar"
-                               href="{{ url_for('toggle_conductor', id=c.id) }}"
-                               onclick="return confirm('Activar a {{ c.nombre }}?');">
-                                <i class="fas fa-user-check"></i>
-                            </a>
-                        {% endif %}
-
-                        <a class="btn-pago"
-                           href="{{ url_for('pagar_conductor', id=c.id) }}"
-                           onclick="return confirm('Confirmar pago de {{ c.nombre }}?');">
+                    <td style="display: flex; gap: 5px; justify-content: center;">
+                        <a class="btn-bloquear" href="{{ url_for('toggle_conductor', id=c.id) }}" onclick="return confirm('¿Cambiar estado?');">
+                            <i class="fas {% if c.activo == 1 or c.activo == '1' %}fa-user-slash{% else %}fa-user-check{% endif %}"></i>
+                        </a>
+                        <a class="btn-pago" href="{{ url_for('pagar_conductor', id=c.id) }}" onclick="return confirm('¿Confirmar pago?');">
                             <i class="fas fa-dollar-sign"></i>
                         </a>
-
                     </td>
                 </tr>
                 {% endfor %}
@@ -119,58 +95,29 @@
     </div>
 
     {% if conductores|length == 0 %}
-        <p style="text-align:center; padding: 20px; color: #7f8c8d;">
-            No hay conductores registrados.
-        </p>
+        <p style="text-align:center; padding: 20px; color: #7f8c8d;">No hay conductores registrados.</p>
     {% endif %}
 </div>
 
 <script>
 function filtrarTabla() {
-    const input = document.getElementById("buscador");
-    const filter = input.value.toLowerCase();
+    const filter = document.getElementById("buscador").value.toLowerCase();
     const rows = document.querySelectorAll("#tablaConductores tbody tr");
-
     rows.forEach(row => {
-        const nombre = row.children[0].textContent.toLowerCase();
-        const tel = row.children[1].textContent.toLowerCase();
-        row.style.display = (nombre + tel).includes(filter) ? "" : "none";
+        const text = row.children[0].textContent + row.children[1].textContent;
+        row.style.display = text.toLowerCase().includes(filter) ? "" : "none";
     });
 }
 </script>
 
 <style>
-table {
-    width: 100%;
-    border-collapse: collapse;
-    margin-top: 10px;
-    font-size: 14px;
-}
-
-th, td {
-    text-align: center;
-    border-bottom: 1px solid #eee;
-    padding: 10px;
-}
-
-.btn-activar, .btn-bloquear, .btn-pago {
-    padding: 8px 12px;
-    border-radius: 5px;
-    color: white;
-    font-size: 12px;
-    text-decoration: none;
-}
-
+table { width: 100%; border-collapse: collapse; margin-top: 10px; font-size: 14px; }
+th, td { text-align: center; border-bottom: 1px solid #eee; padding: 10px; }
+.btn-activar, .btn-bloquear, .btn-pago { padding: 8px 12px; border-radius: 5px; color: white; font-size: 12px; text-decoration: none; }
 .btn-activar { background: var(--accent); }
 .btn-bloquear { background: var(--danger); }
 .btn-pago { background: #3498db; }
-
-.activo { color: var(--accent); }
-.bloqueado { color: var(--danger); }
-button:hover, .btn-activar:hover, .btn-bloquear:hover, .btn-pago:hover {
-    opacity: 0.8;
-}
-
+.activo { color: var(--accent); font-weight: bold; }
+.bloqueado { color: var(--danger); font-weight: bold; }
 </style>
-
 {% endblock %}
