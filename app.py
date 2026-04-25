@@ -59,10 +59,7 @@ def crear_tablas():
 crear_tablas()
 
 # ---------------------- LOGIN ----------------------
-# ... (todo el inicio igual)
-
-# ---------------------- LOGIN (Optimizado) ----------------------
-from werkzeug.security import check_password_hash
+from werkzeug.security import check_password_hash, generate_password_hash
 
 @app.route("/", methods=["GET", "POST"]) 
 def login():
@@ -76,16 +73,36 @@ def login():
             "SELECT * FROM usuarios WHERE telefono=?",
             (telefono,)
         ).fetchone()
-        conn.close()
 
-        # 🔴 VALIDACIÓN CORRECTA
-        if user and (
-            check_password_hash(user["password"], password)
-            or user["password"] == password
-        ):
+        if user:
+            password_db = user["password"]
 
+            # 🔐 CASO 1: ya tiene hash
+            if password_db.startswith("scrypt:"):
+                if not check_password_hash(password_db, password):
+                    conn.close()
+                    error = "Teléfono o contraseña incorrectos"
+                    return render_template("login.html", error=error)
+
+            # 🟡 CASO 2: contraseña vieja (texto plano)
+            else:
+                if password_db != password:
+                    conn.close()
+                    error = "Teléfono o contraseña incorrectos"
+                    return render_template("login.html", error=error)
+
+                # 🔥 convertir automáticamente a hash
+                hash_nuevo = generate_password_hash(password)
+                conn.execute(
+                    "UPDATE usuarios SET password=? WHERE id=?",
+                    (hash_nuevo, user["id"])
+                )
+                conn.commit()
+
+            conn.close()
+
+            # ✅ CREAR SESIÓN
             session.clear()
-
             session["user_id"] = user["id"]
             session["nombre"] = user["nombre"]
             session["telefono"] = user["telefono"]
@@ -93,19 +110,19 @@ def login():
             tipo_usuario = str(user["tipo"]).lower().strip()
             session["tipo"] = tipo_usuario
 
+            # 🚀 REDIRECCIÓN
             if tipo_usuario == "admin":
                 return redirect(url_for("admin"))
             elif tipo_usuario == "conductor":
                 return redirect(url_for("conductor"))
             else:
                 return redirect(url_for("cliente"))
+
         else:
+            conn.close()
             error = "Teléfono o contraseña incorrectos"
 
     return render_template("login.html", error=error)
-
-# ... (el resto de tus rutas corregidas que ya tienes)
-
 # ---------------------- REGISTRO CLIENTE ----------------------
 @app.route("/registro", methods=["GET", "POST"])
 def registro():
