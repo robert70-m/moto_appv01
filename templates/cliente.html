@@ -156,11 +156,11 @@ document.addEventListener("DOMContentLoaded", function() {
                 tituloEstado.innerText = d.estado === "finalizado" ?              "¡Llegaste a tu destino! 🏁" : "Viaje Cancelado ❌";
                 textoEstadoDetalle.innerText = d.estado === "finalizado" ?  "Gracias por viajar con nosotros." : "El viaje ya no está activo.";
                 if (btnCancelar) btnCancelar.style.display = "none";
-    
-                const urlIndex = "{{ url_for('index') | safe }}";
+                const urlIndex = "{{ url_for('login') }}";
                 setTimeout(() => { location.href = urlIndex; }, 5000);
 
                 return;
+                
             }
             
 
