@@ -162,31 +162,36 @@ document.addEventListener("DOMContentLoaded", function() {
                 return;
                 
             }
-            
-
             if (["aceptado", "en_camino", "recogido", "cerca"].includes(d.estado)) {
-                panelStatus.style.display = "block";
-                if (btnCancelar) btnCancelar.style.display = "none";
+    panelStatus.style.display = "block";
 
-                document.getElementById("nombre_en_pantalla").innerText = d.conductor || "Asignado";
-                document.getElementById("unidad_en_pantalla").innerText = d.unidad || "---";
-                document.getElementById("color_en_pantalla").innerText = d.color || "---";
+    // 🚫 ocultar botón cancelar
+    if (btnCancelar) btnCancelar.style.display = "none";
 
-                const mapaEstados = {
-                    "aceptado": "¡Conductor asignado! Preparando salida.",
-                    "en_camino": "El conductor va hacia tu ubicación 🛵",
-                    "recogido": "Vas a bordo. ¡Buen viaje! 🚀",
-                    "cerca": "¡Mira afuera! El conductor llegó 🚨"
-                };
+    // 🚫 ocultar formulario
+    document.querySelector("form").style.display = "none";
 
-                tituloEstado.innerText = "Viaje en curso";
-                textoEstadoDetalle.innerText = mapaEstados[d.estado] || d.estado;
+    document.getElementById("nombre_en_pantalla").innerText = d.conductor || "Asignado";
+    document.getElementById("unidad_en_pantalla").innerText = d.unidad || "---";
+    document.getElementById("color_en_pantalla").innerText = d.color || "---";
 
-                if (d.estado === "cerca" && !alertaMostrada) {
-                    alertaCerca();
-                    alertaMostrada = true;
-                }
-            }
+    const mapaEstados = {
+        "aceptado": "¡Conductor asignado! Preparando salida.",
+        "en_camino": "El conductor va hacia tu ubicación 🛵",
+        "recogido": "Vas a bordo. ¡Buen viaje! 🚀",
+        "cerca": "¡Mira afuera! El conductor llegó 🚨"
+    };
+
+    tituloEstado.innerText = "Viaje en curso";
+    textoEstadoDetalle.innerText = mapaEstados[d.estado] || d.estado;
+
+    if (d.estado === "cerca" && !alertaMostrada) {
+        alertaCerca();
+        alertaMostrada = true;
+    }
+}
+
+
 
         })
         .catch(err => console.error(err))

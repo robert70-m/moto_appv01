@@ -256,22 +256,30 @@ def pedir_viaje():
     return redirect(url_for("cliente"))
 @app.route("/cancelar_viaje/<int:viaje_id>")
 def cancelar_viaje(viaje_id):
-    if not session.get("user_id"):
-        return redirect(url_for("login"))
-
     conn = get_db()
-    # Solo permitimos cancelar si el viaje es del cliente y no ha finalizado
-    conn.execute("""
-        UPDATE viajes
-        SET estado='cancelado'
-        WHERE id=? AND cliente_id=? AND estado NOT IN ('finalizado', 'cancelado')
-    """, (viaje_id, session["user_id"]))
 
+    viaje = conn.execute(
+        "SELECT estado FROM viajes WHERE id=?",
+        (viaje_id,)
+    ).fetchone()
+
+    if not viaje:
+        conn.close()
+        return redirect(url_for("cliente"))
+
+    # 🚫 SOLO permitir cancelar si está pendiente
+    if viaje["estado"] != "pendiente":
+        conn.close()
+        return redirect(url_for("cliente"))
+
+    conn.execute(
+        "UPDATE viajes SET estado='cancelado' WHERE id=?",
+        (viaje_id,)
+    )
     conn.commit()
     conn.close()
 
     return redirect(url_for("cliente"))
-
 # ---------------------- CONDUCTOR ----------------------
 @app.route("/estado_conductor")
 def estado_conductor():
