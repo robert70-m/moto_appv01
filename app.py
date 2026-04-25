@@ -79,7 +79,10 @@ def login():
         conn.close()
 
         # 🔴 VALIDACIÓN CORRECTA
-        if user and check_password_hash(user["password"], password):
+        if user and (
+            check_password_hash(user["password"], password)
+            or user["password"] == password
+        ):
 
             session.clear()
 
@@ -371,7 +374,10 @@ def api_viaje_cliente():
     """, (user_id,)).fetchone()
     conn.close()
 
-    return jsonify({"viaje": dict(viaje) if viaje else None})
+    if viaje:
+        return jsonify({"viaje": dict(viaje)})
+    else:
+        return jsonify({"viaje": None})
 
 @app.route("/aceptar_viaje_ajax/<int:id>", methods=["POST"])
 def aceptar_viaje_ajax(id):
@@ -598,5 +604,9 @@ def cambiar_password():
     conn.close()
 
     return redirect(url_for("admin"))
+@app.after_request
+def add_header(response):
+    response.headers["Cache-Control"] = "no-store, no-cache, must-revalidate"
+    return response
 if __name__ == "__main__":
     app.run(debug=True)

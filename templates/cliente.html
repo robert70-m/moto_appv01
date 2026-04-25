@@ -41,6 +41,10 @@
 </div> 
 
 <div id="status_conductor" style="display:none; padding:15px; background:#d4edda; border-radius:10px; margin: 10px 0; border: 1px solid #c3e6cb; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">
+
+    <p id="estado" style="font-weight:bold; color:#2c3e50;">
+    Esperando viaje...
+</p>
     <p style="margin:0; color: #155724; font-size: 1.1em;">✅ <b>¡Viaje Aceptado!</b></p>
     <hr style="border: 0; border-top: 1px solid #c3e6cb; margin: 10px 0;">
     
@@ -188,5 +192,57 @@ document.addEventListener("DOMContentLoaded", function() {
     vigilarViaje();
 });
 </script>
+<script>
+function revisarViaje() {
+    fetch("/api/viaje_cliente")
+    .then(res => res.json())
+    .then(data => {
 
+        const estadoTexto = document.getElementById("estado");
+        const contenedor = document.getElementById("status_conductor");
+
+        // 🔴 SI NO HAY VIAJE (finalizado)
+        if (!data.viaje) {
+            estadoTexto.innerText = "Viaje finalizado";
+
+            setTimeout(() => {
+                window.location.reload();
+            }, 2000);
+
+            return;
+        }
+
+        // 🟢 SI HAY VIAJE
+        contenedor.style.display = "block";
+
+        // Mostrar datos
+        document.getElementById("nombre_en_pantalla").innerText = data.viaje.nombre_conductor || "";
+        document.getElementById("unidad_en_pantalla").innerText = data.viaje.unidad || "";
+        document.getElementById("color_en_pantalla").innerText = data.viaje.color || "";
+
+        // 🔥 ACTUALIZAR ESTADO
+        let estado = data.viaje.estado;
+
+        if (estado === "aceptado") {
+            estadoTexto.innerText = "Conductor asignado";
+        } else if (estado === "en_camino") {
+            estadoTexto.innerText = "En camino";
+        } else if (estado === "recogido") {
+            estadoTexto.innerText = "En viaje";
+        } else {
+            estadoTexto.innerText = estado;
+        }
+
+        // también actualiza el otro texto si quieres
+        document.getElementById("texto_estado").innerText = estado;
+
+    });
+}
+
+// cada 5 segundos
+setInterval(revisarViaje, 5000);
+
+// ejecutar inmediatamente
+revisarViaje();
+</script>
 {% endblock %}
