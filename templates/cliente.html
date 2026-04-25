@@ -152,15 +152,17 @@ document.addEventListener("DOMContentLoaded", function() {
             const panelStatus = document.getElementById("status_conductor");
             const tituloEstado = document.getElementById("estado_titulo");
             const textoEstadoDetalle = document.getElementById("texto_estado");
-
             if (d.estado === "finalizado" || d.estado === "cancelado") {
-                tituloEstado.innerText = d.estado === "finalizado" ? "¡Llegaste a tu destino! 🏁" : "Viaje Cancelado ❌";
-                textoEstadoDetalle.innerText = d.estado === "finalizado" ? "Gracias por viajar con nosotros." : "El viaje ya no está activo.";
+                tituloEstado.innerText = d.estado === "finalizado" ?              "¡Llegaste a tu destino! 🏁" : "Viaje Cancelado ❌";
+                textoEstadoDetalle.innerText = d.estado === "finalizado" ?  "Gracias por viajar con nosotros." : "El viaje ya no está activo.";
                 if (btnCancelar) btnCancelar.style.display = "none";
-                
-                setTimeout(() => { location.href = "{{ url_for('index') }}"; }, 5000);
+    
+                const urlIndex = "{{ url_for('index') | safe }}";
+                setTimeout(() => { location.href = urlIndex; }, 5000);
+
                 return;
             }
+            
 
             if (["aceptado", "en_camino", "recogido", "cerca"].includes(d.estado)) {
                 panelStatus.style.display = "block";
