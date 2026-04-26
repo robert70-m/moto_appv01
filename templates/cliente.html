@@ -157,7 +157,7 @@ document.addEventListener("DOMContentLoaded", function() {
 
                 document.getElementById("texto_estado").innerText = "Redirigiendo...";
 
-                setTimeout(() => location.href = "{{ url_for('login') }}", 4000);
+                setTimeout(() => location.reload(), 4000);
                 return;
             }
 
