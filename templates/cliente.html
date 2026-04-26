@@ -43,16 +43,16 @@
 </div>
 
 <div id="status_conductor" style="display:none; padding:15px; background:#d4edda; border-radius:10px; margin:10px 0; border:1px solid #c3e6cb;">
-    <h3 id="estado_titulo" style="margin-top:0; color: #155724;">Esperando viaje...</h3>
-    <hr style="border: 0; border-top: 1px solid #c3e6cb;">
+    <h3 id="estado_titulo">Esperando viaje...</h3>
+    <hr>
     <p>👤 <strong>Conductor:</strong> <span id="nombre_en_pantalla">...</span></p>
     <p>🔢 <strong>Unidad:</strong> <span id="unidad_en_pantalla">...</span></p>
     <p>🎨 <strong>Color:</strong> <span id="color_en_pantalla">...</span></p>
     <p>📍 <strong>Estado actual:</strong> <span id="texto_estado">Buscando...</span></p>
 </div>
 
-<div class="card" style="padding:10px;">
-    <div id="map" style="height:450px;width:100%;border-radius:10px;"></div>
+<div class="card">
+    <div id="map" style="height:450px;"></div>
 </div>
 
 <script>
@@ -67,34 +67,33 @@ document.addEventListener("DOMContentLoaded", function() {
 
     const iconoCliente = L.icon({
         iconUrl: 'https://cdn-icons-png.flaticon.com/512/684/684908.png',
-        iconSize: [35,35],
-        iconAnchor: [17,35]
+        iconSize: [35,35]
     });
 
     const iconoDestino = L.icon({
         iconUrl: 'https://cdn-icons-png.flaticon.com/512/447/447031.png',
-        iconSize: [35,35],
-        iconAnchor: [17,35]
+        iconSize: [35,35]
     });
 
     function alertaCerca() {
         let div = document.createElement("div");
         div.innerText = "🚨 ¡Tu conductor está muy cerca!";
-        div.style = "position:fixed;top:80px;left:50%;transform:translateX(-50%);background:#27ae60;color:#fff;padding:15px 25px;border-radius:30px;z-index:9999;font-weight:bold;box-shadow: 0 4px 15px rgba(0,0,0,0.2);";
+        div.style = "position:fixed;top:80px;left:50%;transform:translateX(-50%);background:#27ae60;color:#fff;padding:15px;border-radius:20px;z-index:9999;";
         document.body.appendChild(div);
         setTimeout(() => div.remove(), 5000);
     }
 
     function initMap(lat, lng) {
         if (map) return;
+
         map = L.map('map').setView([lat, lng], 16);
-        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-            attribution: '© OpenStreetMap'
-        }).addTo(map);
+
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
 
         map.on('click', function(e) {
             let latD = e.latlng.lat;
             let lngD = e.latlng.lng;
+
             document.getElementById("lat_destino").value = latD;
             document.getElementById("lng_destino").value = lngD;
             document.getElementById("input_destino").value = "Destino seleccionado ✅";
@@ -128,14 +127,14 @@ document.addEventListener("DOMContentLoaded", function() {
                 map.setView([lat, lng], 16);
                 primeraVez = false;
             }
-        }, function() {
-            document.getElementById("input_origen").value = "Activa tu GPS";
         });
     }
 
-    function vigilarViaje() {
+    // 🔥 FUNCIÓN PRINCIPAL CORRECTA
+    window.vigilarViaje = function() {
+
         const viajeId = "{{ viaje_id }}";
-        
+
         if (!viajeId || viajeId === "None" || viajeId === "") {
             document.getElementById("status_conductor").style.display = "none";
             return;
@@ -144,61 +143,60 @@ document.addEventListener("DOMContentLoaded", function() {
         if (ejecutando) return;
         ejecutando = true;
 
-        const btnCancelar = document.getElementById("contenedor-cancelar");
-
         fetch(`/api_estado_viaje/${viajeId}`)
         .then(r => r.json())
         .then(d => {
-            const panelStatus = document.getElementById("status_conductor");
-            const tituloEstado = document.getElementById("estado_titulo");
-            const textoEstadoDetalle = document.getElementById("texto_estado");
+
+            const panel = document.getElementById("status_conductor");
+
             if (d.estado === "finalizado" || d.estado === "cancelado") {
-                tituloEstado.innerText = d.estado === "finalizado" ?              "¡Llegaste a tu destino! 🏁" : "Viaje Cancelado ❌";
-                textoEstadoDetalle.innerText = d.estado === "finalizado" ?  "Gracias por viajar con nosotros." : "El viaje ya no está activo.";
-                if (btnCancelar) btnCancelar.style.display = "none";
-                const urlIndex = "{{ url_for('login') }}";
-                setTimeout(() => { location.href = urlIndex; }, 5000);
+                panel.style.display = "block";
 
+                document.getElementById("estado_titulo").innerText =
+                    d.estado === "finalizado" ? "Viaje terminado 🏁" : "Viaje cancelado ❌";
+
+                document.getElementById("texto_estado").innerText = "Redirigiendo...";
+
+                setTimeout(() => location.href = "{{ url_for('login') }}", 4000);
                 return;
-                
             }
-            if (["aceptado", "en_camino", "recogido", "cerca"].includes(d.estado)) {
-    panelStatus.style.display = "block";
 
-    // 🚫 ocultar botón cancelar
-    if (btnCancelar) btnCancelar.style.display = "none";
+            if (["aceptado","en_camino","recogido","cerca"].includes(d.estado)) {
 
-    // 🚫 ocultar formulario
-    document.querySelector("form").style.display = "none";
+                panel.style.display = "block";
 
-    document.getElementById("nombre_en_pantalla").innerText = d.conductor || "Asignado";
-    document.getElementById("unidad_en_pantalla").innerText = d.unidad || "---";
-    document.getElementById("color_en_pantalla").innerText = d.color || "---";
+                document.querySelector("form").style.display = "none";
+                const btn = document.getElementById("contenedor-cancelar");
+                if (btn) btn.style.display = "none";
 
-    const mapaEstados = {
-        "aceptado": "¡Conductor asignado! Preparando salida.",
-        "en_camino": "El conductor va hacia tu ubicación 🛵",
-        "recogido": "Vas a bordo. ¡Buen viaje! 🚀",
-        "cerca": "¡Mira afuera! El conductor llegó 🚨"
-    };
+                document.getElementById("nombre_en_pantalla").innerText = d.conductor;
+                document.getElementById("unidad_en_pantalla").innerText = d.unidad;
+                document.getElementById("color_en_pantalla").innerText = d.color;
 
-    tituloEstado.innerText = "Viaje en curso";
-    textoEstadoDetalle.innerText = mapaEstados[d.estado] || d.estado;
+                const estados = {
+                    aceptado: "Conductor asignado",
+                    en_camino: "Va hacia ti 🛵",
+                    recogido: "En viaje 🚀",
+                    cerca: "Está afuera 🚨"
+                };
 
-    if (d.estado === "cerca" && !alertaMostrada) {
-        alertaCerca();
-        alertaMostrada = true;
-    }
-}
+                document.getElementById("estado_titulo").innerText = "Viaje en curso";
+                document.getElementById("texto_estado").innerText = estados[d.estado];
 
-
+                if (d.estado === "cerca" && !alertaMostrada) {
+                    alertaCerca();
+                    alertaMostrada = true;
+                }
+            }
 
         })
-        .catch(err => console.error(err))
+        .catch(e => console.log(e))
         .finally(() => ejecutando = false);
     }
 
-    setInterval(vigilarViaje, 3000);
+    // 🔁 LOOP AUTOMÁTICO
+    setInterval(window.vigilarViaje, 3000);
+
 });
 </script>
 
