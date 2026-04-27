@@ -7,9 +7,7 @@
 
     <link rel="icon" href="{{ url_for('static', filename='icon.png') }}">
     <link rel="apple-touch-icon" href="{{ url_for('static', filename='icon.png') }}">
-
     <meta name="theme-color" content="#2c3e50">
-
     <link rel="manifest" href="{{ url_for('static', filename='manifest.json') }}">
 
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
@@ -24,7 +22,7 @@
             --light: #f4f7f6;
         }
 
-        /* Corregido: Flexbox para que el footer nunca se encime */
+        /* CONFIGURACIÓN BASE PARA MÓVIL */
         body {
             font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
             background: linear-gradient(135deg, #4facfe, #00c6ff);
@@ -32,7 +30,7 @@
             margin: 0;
             display: flex;
             flex-direction: column;
-            min-height: 100vh;
+            min-height: 100vh; /* Asegura que el cuerpo ocupe toda la pantalla */
             color: #333;
             font-size: 16px;
         }
@@ -57,9 +55,9 @@
             color: white;
         }
 
-        /* Corregido: flex-grow para empujar el footer hacia abajo */
+        /* CONTENEDOR PRINCIPAL FLEXIBLE */
         .container {
-            flex: 1;
+            flex: 1; /* Esto empuja el footer hacia abajo */
             padding: 15px 10px;
             max-width: 800px;
             margin: auto;
@@ -80,31 +78,8 @@
             margin-bottom: 20px;
         }
 
-        #toast {
-            display: none;
-            position: fixed;
-            top: 80px;
-            left: 50%;
-            transform: translateX(-50%);
-            background: var(--primary);
-            color: white;
-            padding: 12px 25px;
-            border-radius: 30px;
-            font-weight: bold;
-            z-index: 3000;
-            text-align: center;
-        }
-
+        /* MENÚ DE USUARIO */
         .user-menu { display: flex; gap: 10px; }
-        
-        .nav-link { 
-            color: white; 
-            text-decoration: none; 
-            font-size: 16px; 
-            padding: 10px 15px; 
-            border-radius: 8px; 
-            background: rgba(255,255,255,0.1); 
-        }
         
         .user-btn { 
             background: #34495e; 
@@ -140,34 +115,31 @@
             font-size: 16px;
         }
 
-        /* MEDIA QUERIES OPTIMIZADAS */
-        @media (max-width: 768px) {
-            html { font-size: 18px; }
-            body { font-size: 1rem; }
-            .header-title { font-size: 1.3rem; }
-            button, .user-btn, .nav-link, a { 
-                font-size: 1.1rem !important; 
-                min-height: 44px;
-            }
-            .card { padding: 15px; }
-        }
-
-        /* Estilo para que el footer siempre se vea bien */
+        /* FOOTER CORREGIDO PARA DOS LÍNEAS */
         .main-footer {
             text-align: center;
             font-size: 0.85rem;
             color: white;
-            background: rgba(0, 0, 0, 0.2);
-            padding: 20px 10px;
-            margin-top: auto; /* Empuja al fondo */
+            background: rgba(0, 0, 0, 0.3);
+            padding: 20px 15px;
+            margin-top: auto;
             width: 100%;
+            box-sizing: border-box;
+            white-space: normal;
+            line-height: 1.5;
+        }
+
+        /* AJUSTES PARA PANTALLAS PEQUEÑAS */
+        @media (max-width: 768px) {
+            html { font-size: 18px; }
+            button, .user-btn, a.nav-link { 
+                min-height: 44px; /* Tamaño mínimo táctil */
+            }
         }
     </style>
 </head>
 
 <body>
-
-<div id="toast"></div>
 
 <header class="header">
     <a href="{{ url_for('login') }}" class="header-title">Moto App 🏍️</a>
@@ -184,7 +156,7 @@
                 </a>
             </div>
         {% else %}
-            <a href="{{ url_for('login') }}" class="nav-link">Ingresar</a>
+            <a href="{{ url_for('login') }}" style="color:white; text-decoration:none; padding:10px;">Ingresar</a>
         {% endif %}
     </div>
 </header>
@@ -193,25 +165,28 @@
     {% block content %}{% endblock %}
 </main>
 
-<script>
-function toggleMenu() {
-    const menu = document.getElementById("dropdown");
-    if (menu) {
-        menu.style.display = menu.style.display === "block" ? "none" : "block";
-    }
-}
-
-window.addEventListener("click", function(e) {
-    if (!e.target.closest('.user-btn')) {
-        const dropdown = document.getElementById("dropdown");
-        if (dropdown) dropdown.style.display = "none";
-    }
-});
-</script>
-
 <footer class="main-footer">
-    <strong>© 2026 Moto App - Desarrollado por Roberto Hdz.</strong>
+    <div>© 2026 Moto App</div>
+    <div style="font-weight: bold;">Desarrollado por Roberto Hdz.</div>
 </footer>
+
+<script>
+    // Función para el menú desplegable
+    function toggleMenu() {
+        const menu = document.getElementById("dropdown");
+        if (menu) {
+            menu.style.display = menu.style.display === "block" ? "none" : "block";
+        }
+    }
+
+    // Cerrar menú al hacer clic fuera
+    window.addEventListener("click", function(e) {
+        if (!e.target.closest('.user-btn')) {
+            const dropdown = document.getElementById("dropdown");
+            if (dropdown) dropdown.style.display = "none";
+        }
+    });
+</script>
 
 </body>
 </html>
