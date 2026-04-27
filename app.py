@@ -92,9 +92,18 @@ crear_tablas()
 
 # ---------------------- LOGIN ----------------------
 from werkzeug.security import check_password_hash, generate_password_hash
-
 @app.route("/", methods=["GET", "POST"]) 
 def login():
+    # --- 1. VALIDACIÓN DE SESIÓN ACTIVA (Evita re-login al recargar) ---
+    if request.method == "GET" and "user_id" in session:
+        tipo_sesion = session.get("tipo", "").lower().strip()
+        if tipo_sesion == "admin":
+            return redirect(url_for("admin"))
+        elif tipo_sesion == "conductor":
+            return redirect(url_for("conductor"))
+        else:
+            return redirect(url_for("cliente"))
+
     error = None
     if request.method == "POST":
         telefono = request.form.get("telefono", "").strip()
@@ -110,7 +119,7 @@ def login():
             password_db = user["password"]
 
             # 🔐 CASO 1: ya tiene hash
-            if password_db.startswith("scrypt:"):
+            if password_db.startswith("scrypt:") or password_db.startswith("pbkdf2:"):
                 if not check_password_hash(password_db, password):
                     conn.close()
                     error = "Teléfono o contraseña incorrectos"
@@ -123,7 +132,7 @@ def login():
                     error = "Teléfono o contraseña incorrectos"
                     return render_template("login.html", error=error)
 
-                # 🔥 convertir automáticamente a hash
+                # 🔥 convertir automáticamente a hash para mayor seguridad
                 hash_nuevo = generate_password_hash(password)
                 conn.execute(
                     "UPDATE usuarios SET password=? WHERE id=?",
@@ -133,7 +142,7 @@ def login():
 
             conn.close()
 
-            # ✅ CREAR SESIÓN
+            # ✅ CREAR SESIÓN LIMPIA
             session.clear()
             session["user_id"] = user["id"]
             session["nombre"] = user["nombre"]
@@ -142,7 +151,7 @@ def login():
             tipo_usuario = str(user["tipo"]).lower().strip()
             session["tipo"] = tipo_usuario
 
-            # 🚀 REDIRECCIÓN
+            # 🚀 REDIRECCIÓN SEGÚN ROL
             if tipo_usuario == "admin":
                 return redirect(url_for("admin"))
             elif tipo_usuario == "conductor":
@@ -207,42 +216,49 @@ def registro_conductor():
         return redirect(url_for("login"))
 
     return render_template("registro_conductor.html")
-
 @app.route("/conductor")
 def conductor():
-    # 🔐 Validar sesión
+    # 1. 🔐 Validar que existe una sesión
     if "user_id" not in session:
         return redirect(url_for("login"))
 
+    # 2. 🛡️ Validar el rol de conductor
     if session.get("tipo") != "conductor":
         return "No autorizado: Se requiere perfil de conductor", 403
 
     user_id = session["user_id"]
 
+    # 3. 💳 Validar si el conductor está ACTIVO (pago y estado)
+    # Usamos la función que ya definiste anteriormente
+    if not conductor_activo(user_id):
+        # Si no está activo, lo mandamos al login con un mensaje claro
+        session.clear() 
+        return "Tu cuenta está inactiva o el pago ha vencido. Contacta al administrador.", 403
+
     conn = get_db()
+    try:
+        # Buscamos el viaje activo
+        viaje_row = conn.execute("""
+            SELECT * FROM viajes
+            WHERE conductor_id=?
+            AND estado IN ('aceptado','en_camino','recogido','cerca')
+            ORDER BY id DESC LIMIT 1
+        """, (user_id,)).fetchone()
+    finally:
+        conn.close()
 
-    viaje = conn.execute("""
-        SELECT * FROM viajes
-        WHERE conductor_id=?
-        AND estado IN ('aceptado','en_camino','recogido')
-        ORDER BY id DESC LIMIT 1
-    """, (user_id,)).fetchone()
+    # 4. 🔒 PROTECCIÓN DE DATOS PARA EL TEMPLATE
+    if viaje_row:
+        viaje = dict(viaje_row)
 
-    conn.close()
+        # Asegurar valores numéricos para Leaflet (evita que el mapa desaparezca)
+        viaje["lat"] = viaje.get("lat") if viaje.get("lat") is not None else 0.0
+        viaje["lng"] = viaje.get("lng") if viaje.get("lng") is not None else 0.0
+        viaje["lat_destino"] = viaje.get("lat_destino") if viaje.get("lat_destino") is not None else 0.0
+        viaje["lng_destino"] = viaje.get("lng_destino") if viaje.get("lng_destino") is not None else 0.0
 
-    # 🔒 PROTECCIÓN (CLAVE)
-    if viaje:
-        viaje = dict(viaje)
-
-        # Evitar que el mapa falle por valores nulos o 0
-        viaje["lat"] = viaje.get("lat") or 0
-        viaje["lng"] = viaje.get("lng") or 0
-        viaje["lat_destino"] = viaje.get("lat_destino") or 0
-        viaje["lng_destino"] = viaje.get("lng_destino") or 0
-
-        # Evitar que estado venga None
+        # Asegurar que el estado sea una cadena válida
         viaje["estado"] = viaje.get("estado") or "pendiente"
-
     else:
         viaje = None
 
