@@ -207,29 +207,46 @@ def registro_conductor():
         return redirect(url_for("login"))
 
     return render_template("registro_conductor.html")
+
 @app.route("/conductor")
 def conductor():
-    # Verificamos si hay usuario en sesión
+    # 🔐 Validar sesión
     if "user_id" not in session:
         return redirect(url_for("login"))
 
-    # IMPORTANTE: Verificamos el tipo usando session.get("tipo")
-    # que es como lo guarda tu ruta de login corregida.
     if session.get("tipo") != "conductor":
         return "No autorizado: Se requiere perfil de conductor", 403
 
+    user_id = session["user_id"]
+
     conn = get_db()
-    # Buscamos si tiene un viaje activo
+
     viaje = conn.execute("""
         SELECT * FROM viajes
         WHERE conductor_id=?
         AND estado IN ('aceptado','en_camino','recogido')
         ORDER BY id DESC LIMIT 1
-    """, (session["user_id"],)).fetchone()
+    """, (user_id,)).fetchone()
+
     conn.close()
 
-    return render_template("conductor.html", viaje=dict(viaje) if viaje else None)
+    # 🔒 PROTECCIÓN (CLAVE)
+    if viaje:
+        viaje = dict(viaje)
 
+        # Evitar que el mapa falle por valores nulos o 0
+        viaje["lat"] = viaje.get("lat") or 0
+        viaje["lng"] = viaje.get("lng") or 0
+        viaje["lat_destino"] = viaje.get("lat_destino") or 0
+        viaje["lng_destino"] = viaje.get("lng_destino") or 0
+
+        # Evitar que estado venga None
+        viaje["estado"] = viaje.get("estado") or "pendiente"
+
+    else:
+        viaje = None
+
+    return render_template("conductor.html", viaje=viaje)
 # ---------------------- CLIENTE ----------------------
 @app.route("/cliente")
 def cliente():
@@ -377,16 +394,37 @@ def viajes_disponibles():
         return redirect("/")
 
     user_id = session.get("user_id")
-    if not user_id or not conductor_activo(user_id):
-        return "Cuenta bloqueada", 403
-
     conn = get_db()
-    viajes = conn.execute(
-        "SELECT * FROM viajes WHERE estado='pendiente'"
-    ).fetchall()
+
+    # 🔒 Buscar si tiene viaje activo
+    viaje_activo = conn.execute("""
+        SELECT * FROM viajes
+        WHERE conductor_id=?
+        AND estado IN ('aceptado','en_camino','recogido')
+        ORDER BY id DESC LIMIT 1
+    """, (user_id,)).fetchone()
+
+    if viaje_activo:
+        conn.close()
+        return render_template(
+            "viajes.html",
+            viaje_activo=dict(viaje_activo),
+            viajes=None
+        )
+
+    # ✅ Si NO tiene viaje activo, mostrar disponibles
+    viajes = conn.execute("""
+        SELECT * FROM viajes
+        WHERE estado='pendiente'
+    """).fetchall()
+
     conn.close()
 
-    return render_template("viajes.html", viajes=[dict(v) for v in viajes])
+    return render_template(
+        "viajes.html",
+        viajes=[dict(v) for v in viajes],
+        viaje_activo=None
+    )
 @app.route("/aceptar_viaje/<int:id>")
 def aceptar_viaje(id):
     if not rol("conductor"):
@@ -396,27 +434,21 @@ def aceptar_viaje(id):
     if not user_id:
         return redirect(url_for("login"))
 
-    if not conductor_activo(user_id):
-        return "Cuenta bloqueada", 403
-
     conn = get_db()
 
-    cursor = conn.execute("""
-        UPDATE viajes
-        SET conductor_id=?, estado='aceptado'
-        WHERE id=? AND estado='pendiente'
-    """, (user_id, id))
+    # 🔒 1. Verificar si ya tiene un viaje activo
+    activo = conn.execute("""
+        SELECT id FROM viajes
+        WHERE conductor_id=?
+        AND estado IN ('aceptado','en_camino','recogido')
+        LIMIT 1
+    """, (user_id,)).fetchone()
 
-    conn.commit()
-
-    if cursor.rowcount == 0:
+    if activo:
         conn.close()
-        return "El viaje ya fue tomado o no existe", 400
+        return "Ya tienes un viaje en curso. Finalízalo primero.", 400
 
-    conn.close()
-
-    return redirect(url_for("conductor"))
-    # 🚨 Intentar aceptar el viaje solo si sigue pendiente
+    # 🔒 2. Intentar aceptar el viaje
     cursor = conn.execute("""
         UPDATE viajes
         SET conductor_id=?, estado='aceptado'
@@ -425,7 +457,6 @@ def aceptar_viaje(id):
 
     conn.commit()
 
-    # 🔍 Verificar si realmente se actualizó (evita doble aceptación)
     if cursor.rowcount == 0:
         conn.close()
         return "El viaje ya fue tomado o no existe", 400
@@ -486,10 +517,25 @@ def aceptar_viaje_ajax(id):
         return jsonify({"ok": False})
 
     user_id = session.get("user_id")
-    if not user_id or not conductor_activo(user_id):
-        return jsonify({"ok": False, "error": "Cuenta bloqueada"})
+    if not user_id:
+        return jsonify({"ok": False})
 
     conn = get_db()
+
+    # 🔒 Verificar viaje activo
+    activo = conn.execute("""
+        SELECT id FROM viajes
+        WHERE conductor_id=?
+        AND estado IN ('aceptado','en_camino','recogido')
+        LIMIT 1
+    """, (user_id,)).fetchone()
+
+    if activo:
+        conn.close()
+        return jsonify({
+            "ok": False,
+            "error": "Ya tienes un viaje activo"
+        })
 
     conn.execute("""
         UPDATE viajes
@@ -501,7 +547,6 @@ def aceptar_viaje_ajax(id):
     conn.close()
 
     return jsonify({"ok": True})
-
 @app.route('/toggle_conductor/<int:id>')
 def toggle_conductor(id):
     if session.get('tipo') != 'admin':
