@@ -4,13 +4,45 @@
 <link rel="stylesheet" href="https://unpkg.com/leaflet-routing-machine@latest/dist/leaflet-routing-machine.css" />
 <script src="https://unpkg.com/leaflet-routing-machine@latest/dist/leaflet-routing-machine.js"></script>
 
-<div class="card" style="height: 80vh; display: flex; flex-direction: column; padding: 5px;">
-    <h3 style="text-align: center; margin: 5px;">Viajes en tiempo real 🏍️</h3>
+<div class="card" style="height: 85vh; display: flex; flex-direction: column; padding: 5px; margin-bottom: 10px;">
+    <h3 style="text-align: center; margin: 10px 0; font-size: 1.4rem;">Viajes en tiempo real 🏍️</h3>
     <div id="map" style="flex-grow: 1; border-radius: 10px; z-index: 1;"></div>
 </div>
 
 <style>
+    /* Ocultar el panel de instrucciones de ruta */
     .leaflet-routing-container { display: none !important; }
+
+    /* MEJORA MÓVIL: Agrandar botones de zoom de Leaflet */
+    .leaflet-control-zoom-in, 
+    .leaflet-control-zoom-out {
+        width: 44px !important;
+        height: 44px !important;
+        line-height: 44px !important;
+        font-size: 20px !important;
+    }
+
+    /* MEJORA MÓVIL: Agrandar el contenido de los popups para que sea legible */
+    .leaflet-popup-content {
+        font-size: 1.1rem !important;
+        min-width: 150px !important;
+        text-align: center;
+    }
+
+    /* Estilo para el botón de aceptar dentro del mapa */
+    .btn-aceptar-mapa {
+        background: #27ae60; 
+        color: white; 
+        padding: 12px; 
+        border-radius: 8px; 
+        display: block; 
+        text-align: center; 
+        margin-top: 10px; 
+        text-decoration: none; 
+        font-weight: bold;
+        font-size: 1rem;
+        box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+    }
 </style>
 
 <script>
@@ -18,17 +50,23 @@ let map;
 let rutasActivas = [];
 let viajeEnCurso = false;
 
-// 🟢 CONFIGURACIÓN DE ICONOS
+// 🟢 CONFIGURACIÓN DE ICONOS (Agrandados un poco para mejor visibilidad)
 const iconVerde = L.icon({
     iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-green.png',
     shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/0.7.7/images/marker-shadow.png',
-    iconSize: [25, 41], iconAnchor: [12, 41], popupAnchor: [1, -34], shadowSize: [41, 41]
+    iconSize: [30, 50], // Aumentado de [25, 41]
+    iconAnchor: [15, 50], 
+    popupAnchor: [1, -34], 
+    shadowSize: [41, 41]
 });
 
 const iconRojo = L.icon({
     iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-red.png',
     shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/0.7.7/images/marker-shadow.png',
-    iconSize: [25, 41], iconAnchor: [12, 41], popupAnchor: [1, -34], shadowSize: [41, 41]
+    iconSize: [30, 50], // Aumentado de [25, 41]
+    iconAnchor: [15, 50], 
+    popupAnchor: [1, -34], 
+    shadowSize: [41, 41]
 });
 
 function initMap() {
@@ -66,9 +104,15 @@ function cargarViajes() {
                     ],
                     createMarker: function(i, wp) {
                         const icon = (i === 0) ? iconVerde : iconRojo;
+                        // Mejorado: Botón más grande y fácil de presionar en movimiento
                         const popupText = (i === 0) 
-                            ? `<b>Recoger aquí</b><br><a href="/aceptar_viaje/${v.id}" onclick="viajeEnCurso=true" style="background:green; color:white; padding:8px; border-radius:5px; display:block; text-align:center; margin-top:5px; text-decoration:none;">ACEPTAR ✅</a>`
-                            : `<b>Destino</b>`;
+                            ? `<b>Punto de Recogida</b><br>
+                               <a href="/aceptar_viaje/${v.id}" 
+                                  onclick="viajeEnCurso=true" 
+                                  class="btn-aceptar-mapa">
+                                  ACEPTAR VIAJE ✅
+                               </a>`
+                            : `<b>Destino Final</b>`;
                         
                         return L.marker(wp.latLng, { icon: icon }).bindPopup(popupText);
                     },
@@ -76,7 +120,7 @@ function cargarViajes() {
                     draggableWaypoints: false,
                     show: false,
                     lineOptions: {
-                        styles: [{ color: '#3498db', opacity: 0.7, weight: 5 }]
+                        styles: [{ color: '#3498db', opacity: 0.7, weight: 6 }] // Línea un poco más gruesa
                     }
                 }).addTo(map);
 
@@ -89,6 +133,7 @@ function cargarViajes() {
 document.addEventListener("DOMContentLoaded", function() {
     initMap();
     cargarViajes();
+    // Refresco cada 15 segundos para no saturar pero mantener datos frescos
     setInterval(cargarViajes, 15000);
 });
 </script>

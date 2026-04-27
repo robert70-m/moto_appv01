@@ -2,20 +2,16 @@
 <html lang="es">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{% block title %}Moto App 🏍️{% endblock %}</title>
 
-    <!-- ICONO APP -->
     <link rel="icon" href="{{ url_for('static', filename='icon.png') }}">
     <link rel="apple-touch-icon" href="{{ url_for('static', filename='icon.png') }}">
 
-    <!-- COLOR APP -->
     <meta name="theme-color" content="#2c3e50">
 
-    <!-- MANIFEST -->
     <link rel="manifest" href="{{ url_for('static', filename='manifest.json') }}">
 
-    <!-- LIBRERÍAS -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
@@ -35,6 +31,8 @@
             margin: 0;
             min-height: 100vh;
             color: #333;
+            /* Corregido: Tamaño de fuente base más legible */
+            font-size: 16px;
         }
 
         .header {
@@ -70,7 +68,7 @@
 
         .card {
             background: white;
-            padding: 15px;
+            padding: 20px; /* Aumentado de 15 a 20 */
             border-radius: 15px;
             box-shadow: 0 5px 15px rgba(0,0,0,0.1);
             margin-bottom: 20px;
@@ -92,16 +90,37 @@
         }
 
         .user-menu { display: flex; gap: 10px; }
-        .nav-link { color: white; text-decoration: none; font-size: 14px; padding: 8px 12px; border-radius: 5px; background: rgba(255,255,255,0.1); }
-        .user-btn { background: #34495e; color: white; border: none; padding: 8px 15px; border-radius: 20px; cursor: pointer; display: flex; align-items: center; gap: 8px; }
+        
+        /* Corregido: Botones más grandes para evitar toques accidentales */
+        .nav-link { 
+            color: white; 
+            text-decoration: none; 
+            font-size: 16px; 
+            padding: 10px 15px; 
+            border-radius: 8px; 
+            background: rgba(255,255,255,0.1); 
+        }
+        
+        .user-btn { 
+            background: #34495e; 
+            color: white; 
+            border: none; 
+            padding: 10px 18px; 
+            border-radius: 20px; 
+            cursor: pointer; 
+            display: flex; 
+            align-items: center; 
+            gap: 8px; 
+            font-size: 16px;
+        }
 
         .dropdown {
             display: none;
             position: absolute;
             right: 20px;
-            top: 55px;
+            top: 60px;
             background: white;
-            min-width: 160px;
+            min-width: 180px;
             border-radius: 10px;
             box-shadow: 0 5px 20px rgba(0,0,0,0.2);
             z-index: 2500;
@@ -109,16 +128,30 @@
 
         .dropdown a {
             display: block;
-            padding: 12px 15px;
+            padding: 15px 20px;
             color: #333;
             text-decoration: none;
             border-bottom: 1px solid #f0f0f0;
+            font-size: 16px;
         }
 
+        /* MEDIA QUERIES OPTIMIZADAS PARA MÓVIL */
         @media (max-width: 768px) {
-            body { font-size: 18px; }
-            .header-title { font-size: 1rem; }
-            button, .user-btn, .nav-link, a { font-size: 18px !important; }
+            html { font-size: 18px; } /* Agranda todo lo que use 'rem' */
+            
+            body { font-size: 1rem; }
+
+            .header-title { font-size: 1.3rem; }
+
+            /* Ajuste de botones para el dedo (mínimo 44px de alto) */
+            button, .user-btn, .nav-link, a { 
+                font-size: 1.1rem !important; 
+                min-height: 44px;
+            }
+
+            .card {
+                padding: 15px;
+            }
         }
     </style>
 </head>
@@ -166,9 +199,10 @@ window.addEventListener("click", function(e) {
     }
 });
 </script>
-<footer style="text-align:center; font-size:12px; color:#888; margin-top:20px;">
-    <strong>© 2026 Miapp - Desarrollado por Roberto Hdz. Todos los derechos reservados.</strong>
-    </footer>
+
+<footer style="text-align:center; font-size: 0.9rem; color:#f4f7f6; margin-top:30px; padding-bottom: 20px;">
+    <strong>© 2026 Moto App - Desarrollado por Roberto Hdz.</strong>
+</footer>
 
 </body>
 </html>
