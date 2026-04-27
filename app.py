@@ -467,24 +467,42 @@ def aceptar_viaje(id):
 @app.route("/cambiar_estado_viaje/<int:id>/<nuevo_estado>")
 def cambiar_estado_viaje(id, nuevo_estado):
     if not rol("conductor"):
-        return redirect(url_for("login"))
+        return "NO", 403
 
     user_id = session.get("user_id")
-    if not user_id or not conductor_activo(user_id):
-        return "Cuenta bloqueada", 403
+    if not user_id:
+        return "NO", 403
 
     conn = get_db()
 
-    conn.execute(
-        "UPDATE viajes SET estado=? WHERE id=?",
-        (nuevo_estado, id)
-    )
+    # validar que el viaje es del conductor
+    viaje = conn.execute("""
+        SELECT id, estado FROM viajes
+        WHERE id=? AND conductor_id=?
+    """, (id, user_id)).fetchone()
 
+    if not viaje:
+        conn.close()
+        return "NO", 403
+
+    # flujo correcto de estados
+    transiciones = {
+        "aceptado": "en_camino",
+        "en_camino": "recogido",
+        "recogido": "finalizado"
+    }
+
+    estado_actual = viaje["estado"]
+
+    if estado_actual not in transiciones or transiciones[estado_actual] != nuevo_estado:
+        conn.close()
+        return "NO", 400
+
+    conn.execute("UPDATE viajes SET estado=? WHERE id=?", (nuevo_estado, id))
     conn.commit()
     conn.close()
 
-    return redirect(url_for("viajes_disponibles" if nuevo_estado == "finalizado" else "conductor"))
-
+    return "OK"
 # ---------------------- API ----------------------
 @app.route("/api_viajes")
 def api_viajes():

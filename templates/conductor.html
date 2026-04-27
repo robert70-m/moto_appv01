@@ -12,164 +12,125 @@
         Estado: <strong id="status-text">En línea 🟢</strong>
     </p>
 
-    <a href="{{ url_for('viajes_disponibles') }}" style="text-decoration: none;">
-        <button style="background: #3498db; width: 100%; padding: 10px; border: none; color: white; border-radius: 5px; font-weight: bold; cursor: pointer; font-size: 16px;">
+    <a href="{{ url_for('viajes_disponibles') }}">
+        <button style="background:#3498db;width:100%;padding:10px;border:none;color:white;border-radius:5px;font-weight:bold;">
             🔎 Ver viajes disponibles
         </button>
     </a>
 </div>
 
 <div id="alerta-viaje" class="alerta-viaje" style="display:none;" onclick="detenerAlerta()">
-    🚨 NUEVO VIAJE DISPONIBLE 🚨 <br> <small>(Toca aquí para silenciar)</small>
+    🚨 NUEVO VIAJE DISPONIBLE 🚨
 </div>
 
 <div class="card" style="padding: 10px;">
-    <h3 style="text-align: center; margin-bottom: 10px;">Control de Viaje Activo</h3>
-    
+    <h3 style="text-align: center;">Control de Viaje Activo</h3>
+
     {% if viaje %}
-    <div id="map_conductor" style="height: 60vh; width: 100%; border-radius: 12px; margin-bottom: 15px; border: 2px solid #2c3e50; z-index: 1;"></div>
+    <div id="map_conductor" style="height:60vh;"></div>
     {% else %}
-    <div style="text-align: center; padding: 30px; border: 2px dashed #ccc; border-radius: 10px; color: #7f8c8d; margin-bottom: 15px;">
-        <p>No hay un viaje activo seleccionado.</p>
-    </div>
+    <div style="text-align:center;padding:30px;">No hay viaje activo</div>
     {% endif %}
 
-    <div style="display: flex; flex-direction: column; gap: 10px;">
-        <button onclick="actualizarEstado('en_camino', '{{ viaje.id if viaje else '' }}')" 
-                style="background:#f39c12; color:white; padding:15px; border:none; border-radius:8px; font-weight:bold; font-size: 16px;"
-                {% if not viaje or viaje.estado != 'aceptado' %} disabled {% endif %}>
-            En Camino al Cliente 🛵
+    <div style="display:flex;flex-direction:column;gap:10px;">
+
+        <button onclick="actualizarEstado('en_camino','{{ viaje.id if viaje else '' }}')"
+        {% if not viaje or viaje.estado != 'aceptado' %} disabled {% endif %}>
+        En Camino 🛵
         </button>
-        
-        <button onclick="actualizarEstado('recogido', '{{ viaje.id if viaje else '' }}')" 
-                style="background:#9b59b6; color:white; padding:15px; border:none; border-radius:8px; font-weight:bold; font-size: 16px;"
-                {% if not viaje or viaje.estado != 'en_camino' %} disabled {% endif %}>
-            Cliente Recogido ✅
+
+        <button onclick="actualizarEstado('recogido','{{ viaje.id if viaje else '' }}')"
+        {% if not viaje or viaje.estado != 'en_camino' %} disabled {% endif %}>
+        Recogido ✅
         </button>
-        
-        <button onclick="actualizarEstado('finalizado', '{{ viaje.id if viaje else '' }}')" 
-                style="background:#e74c3c; color:white; padding:15px; border:none; border-radius:8px; font-weight:bold; font-size: 16px;"
-                {% if not viaje or viaje.estado != 'recogido' %} disabled {% endif %}>
-            Finalizar Viaje 🏁
+
+        <button onclick="actualizarEstado('finalizado','{{ viaje.id if viaje else '' }}')"
+        {% if not viaje or viaje.estado != 'recogido' %} disabled {% endif %}>
+        Finalizar 🏁
         </button>
+
     </div>
 </div>
 
 <style>
-.alerta-viaje {
-    position: fixed;
-    top: 0;
-    left: 0;
-    width: 100%;
-    background: #e74c3c;
-    color: white;
-    text-align: center;
-    padding: 25px;
-    font-size: 20px;
-    font-weight: bold;
-    z-index: 9999;
-    animation: parpadeo 1s infinite;
-    cursor: pointer;
-}
-@keyframes parpadeo {
-    0% { opacity: 1; }
-    50% { opacity: 0.7; }
-    100% { opacity: 1; }
-}
 button:disabled {
-    background: #bdc3c7 !important;
-    cursor: not-allowed;
-    opacity: 0.6;
+    background:#bdc3c7;
 }
-.leaflet-routing-container {
-    display: none !important;
+.alerta-viaje {
+    position:fixed;
+    top:0;
+    width:100%;
+    background:red;
+    color:white;
+    text-align:center;
+    padding:20px;
 }
 </style>
 
 <script>
-// 🔊 AUDIO
-const sonido = document.getElementById("sonidoNotificacion");
-let audioHabilitado = false;
 
-// desbloqueo obligatorio en móviles
-document.addEventListener("click", () => {
-    if (!audioHabilitado) {
-        sonido.play().then(() => {
-            sonido.pause();
-            sonido.currentTime = 0;
-            audioHabilitado = true;
-        }).catch(()=>{});
+// 🔴 FUNCIÓN ARREGLADA (CLAVE)
+function actualizarEstado(nuevoEstado, viajeId) {
+    if (!viajeId) {
+        alert("No hay viaje activo");
+        return;
     }
-});
 
-// 📳 vibración
-function vibrar() {
-    if (navigator.vibrate) {
-        navigator.vibrate([300, 200, 300]);
-    }
+    fetch(`/cambiar_estado_viaje/${viajeId}/${nuevoEstado}`)
+    .then(res => res.text())
+    .then(txt => {
+        if (txt === "OK") {
+            location.reload();
+        } else {
+            alert("Error al actualizar");
+        }
+    })
+    .catch(()=> alert("Error conexión"));
 }
 
-// 🚨 ALERTA
-let alertaActiva = false;
-let intervaloSonido = null;
-let ultimoId = 0;
+// 🗺️ MAPA CORREGIDO
+{% if viaje %}
+document.addEventListener("DOMContentLoaded", function() {
+
+    const latO = {{ viaje.lat or 0 }};
+    const lngO = {{ viaje.lng or 0 }};
+    const latD = {{ viaje.lat_destino or 0 }};
+    const lngD = {{ viaje.lng_destino or 0 }};
+
+    if (!latO || !lngO || !latD || !lngD) return;
+
+    const map = L.map('map_conductor').setView([latO, lngO], 13);
+
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
+
+    fetch(`https://router.project-osrm.org/route/v1/driving/${lngO},${latO};${lngD},${latD}?overview=full&geometries=geojson`)
+    .then(res => res.json())
+    .then(data => {
+        if (!data.routes.length) return;
+
+        const coords = data.routes[0].geometry.coordinates;
+        const ruta = coords.map(c => [c[1], c[0]]);
+
+        L.polyline(ruta).addTo(map);
+    });
+
+});
+{% endif %}
+
+// 🔊 ALERTAS
+let alerta = false;
 
 function iniciarAlerta() {
-    if (alertaActiva) return;
-
-    alertaActiva = true;
-    document.getElementById("alerta-viaje").style.display = "block";
-    vibrar();
-
-    intervaloSonido = setInterval(() => {
-        if (audioHabilitado) {
-            sonido.currentTime = 0;
-            sonido.play().catch(()=>{});
-        }
-    }, 2000);
+    if (alerta) return;
+    alerta = true;
+    document.getElementById("alerta-viaje").style.display="block";
 }
 
 function detenerAlerta() {
-    alertaActiva = false;
-    document.getElementById("alerta-viaje").style.display = "none";
-
-    if (intervaloSonido) {
-        clearInterval(intervaloSonido);
-        intervaloSonido = null;
-    }
+    alerta = false;
+    document.getElementById("alerta-viaje").style.display="none";
 }
 
-// 🔍 NUEVOS VIAJES
-setInterval(() => {
-    {% if not viaje %}
-    fetch(`{{ url_for('verificar_viajes') }}?ultimo_id=${ultimoId}`)
-    .then(r => r.json())
-    .then(data => {
-        if (data.nuevo_viaje) {
-            iniciarAlerta();
-            ultimoId = data.id;
-        }
-    })
-    .catch(()=>{});
-    {% endif %}
-}, 5000);
-
-// ❌ CANCELACIONES
-let ultimoCancelado = 0;
-
-setInterval(() => {
-    fetch(`{{ url_for('verificar_cancelaciones') }}?ultimo_id=${ultimoCancelado}`)
-    .then(r => r.json())
-    .then(data => {
-        if (data.cancelado) {
-            detenerAlerta();
-            alert("❌ El cliente canceló el viaje");
-            ultimoCancelado = data.id;
-            window.location.href = "{{ url_for('viajes_disponibles') }}";
-        }
-    })
-    .catch(()=>{});
-}, 4000);
 </script>
 
 {% endblock %}
