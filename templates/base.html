@@ -24,14 +24,16 @@
             --light: #f4f7f6;
         }
 
+        /* Corregido: Flexbox para que el footer nunca se encime */
         body {
             font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
             background: linear-gradient(135deg, #4facfe, #00c6ff);
             background-attachment: fixed;
             margin: 0;
+            display: flex;
+            flex-direction: column;
             min-height: 100vh;
             color: #333;
-            /* Corregido: Tamaño de fuente base más legible */
             font-size: 16px;
         }
 
@@ -55,10 +57,14 @@
             color: white;
         }
 
+        /* Corregido: flex-grow para empujar el footer hacia abajo */
         .container {
-            padding: 10px;
+            flex: 1;
+            padding: 15px 10px;
             max-width: 800px;
             margin: auto;
+            width: 100%;
+            box-sizing: border-box;
         }
 
         .full-width-container {
@@ -68,7 +74,7 @@
 
         .card {
             background: white;
-            padding: 20px; /* Aumentado de 15 a 20 */
+            padding: 20px;
             border-radius: 15px;
             box-shadow: 0 5px 15px rgba(0,0,0,0.1);
             margin-bottom: 20px;
@@ -91,7 +97,6 @@
 
         .user-menu { display: flex; gap: 10px; }
         
-        /* Corregido: Botones más grandes para evitar toques accidentales */
         .nav-link { 
             color: white; 
             text-decoration: none; 
@@ -135,23 +140,27 @@
             font-size: 16px;
         }
 
-        /* MEDIA QUERIES OPTIMIZADAS PARA MÓVIL */
+        /* MEDIA QUERIES OPTIMIZADAS */
         @media (max-width: 768px) {
-            html { font-size: 18px; } /* Agranda todo lo que use 'rem' */
-            
+            html { font-size: 18px; }
             body { font-size: 1rem; }
-
             .header-title { font-size: 1.3rem; }
-
-            /* Ajuste de botones para el dedo (mínimo 44px de alto) */
             button, .user-btn, .nav-link, a { 
                 font-size: 1.1rem !important; 
                 min-height: 44px;
             }
+            .card { padding: 15px; }
+        }
 
-            .card {
-                padding: 15px;
-            }
+        /* Estilo para que el footer siempre se vea bien */
+        .main-footer {
+            text-align: center;
+            font-size: 0.85rem;
+            color: white;
+            background: rgba(0, 0, 0, 0.2);
+            padding: 20px 10px;
+            margin-top: auto; /* Empuja al fondo */
+            width: 100%;
         }
     </style>
 </head>
@@ -200,7 +209,7 @@ window.addEventListener("click", function(e) {
 });
 </script>
 
-<footer style="text-align:center; font-size: 0.9rem; color:#f4f7f6; margin-top:30px; padding-bottom: 20px;">
+<footer class="main-footer">
     <strong>© 2026 Moto App - Desarrollado por Roberto Hdz.</strong>
 </footer>
 

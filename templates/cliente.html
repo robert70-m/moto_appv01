@@ -6,35 +6,43 @@
     <span id="texto-alerta"></span>
 </div>
 
-<div class="card">
-    <h2>Pedir Moto 🏍️</h2>
+<div class="card" style="padding: 15px; margin-top: 10px;">
+    <h2 style="text-align: center; margin-bottom: 15px; color: var(--primary);">Pedir Moto 🏍️</h2>
 
     {% if request.args.get('error') %}
-    <div style="background: #fdeaea; color: #e74c3c; padding: 12px; border-radius: 8px; border: 1px solid #f5c6cb; font-weight: bold; text-align: center; margin: 10px;">
+    <div style="background: #fdeaea; color: #e74c3c; padding: 12px; border-radius: 8px; border: 1px solid #f5c6cb; font-weight: bold; text-align: center; margin-bottom: 15px;">
         {{ request.args.get('error') }}
     </div>
     {% endif %}
 
-    <form action="{{ url_for('pedir_viaje') }}" method="POST">
-        <label>Punto de partida:</label>
-        <input type="text" id="input_origen" name="origen" placeholder="Detectando ubicación..." readonly required>
+    <form action="{{ url_for('pedir_viaje') }}" method="POST" id="form-viaje" style="display: flex; flex-direction: column; gap: 12px;">
+        <div style="display: flex; flex-direction: column; gap: 5px;">
+            <label style="font-weight: bold; font-size: 0.9rem;">📍 Punto de partida:</label>
+            <input type="text" id="input_origen" name="origen" placeholder="Detectando ubicación..." 
+                   readonly required class="input-form">
+        </div>
 
-        <label>Destino:</label>
-        <input type="text" id="input_destino" name="destino" placeholder="Selecciona destino en el mapa" readonly required>
+        <div style="display: flex; flex-direction: column; gap: 5px;">
+            <label style="font-weight: bold; font-size: 0.9rem;">🏁 Destino:</label>
+            <input type="text" id="input_destino" name="destino" placeholder="Toca el mapa para marcar destino" 
+                   readonly required class="input-form">
+        </div>
 
         <input type="hidden" id="lat" name="lat">
         <input type="hidden" id="lng" name="lng">
         <input type="hidden" id="lat_destino" name="lat_destino">
         <input type="hidden" id="lng_destino" name="lng_destino">
 
-        <button type="submit">Pedir viaje 🚀</button>
+        <button type="submit" class="btn-pedir">
+            PEDIR VIAJE AHORA 🚀
+        </button>
     </form>
 
     {% if viaje_id %}
-    <div id="contenedor-cancelar">
+    <div id="contenedor-cancelar" style="margin-top: 10px;">
         <a id="btn-cancelar" href="{{ url_for('cancelar_viaje', viaje_id=viaje_id) }}"
            onclick="return confirm('¿Seguro que deseas cancelar el viaje?')">
-            <button style="margin-top:10px;background:#e74c3c;color:white;padding:12px;border:none;border-radius:6px;width:100%;">
+            <button style="background:#e74c3c; color:white; padding:15px; border:none; border-radius:10px; width:100%; font-weight:bold; font-size:1rem; cursor:pointer;">
                 ❌ Cancelar Viaje
             </button>
         </a>
@@ -42,18 +50,64 @@
     {% endif %}
 </div>
 
-<div id="status_conductor" style="display:none; padding:15px; background:#d4edda; border-radius:10px; margin:10px 0; border:1px solid #c3e6cb;">
-    <h3 id="estado_titulo">Esperando viaje...</h3>
-    <hr>
-    <p>👤 <strong>Conductor:</strong> <span id="nombre_en_pantalla">...</span></p>
-    <p>🔢 <strong>Unidad:</strong> <span id="unidad_en_pantalla">...</span></p>
-    <p>🎨 <strong>Color:</strong> <span id="color_en_pantalla">...</span></p>
-    <p>📍 <strong>Estado actual:</strong> <span id="texto_estado">Buscando...</span></p>
+<div id="status_conductor" style="display:none; padding:20px; background:#d4edda; border-radius:15px; margin:15px 0; border:2px solid #c3e6cb; box-shadow: 0 4px 10px rgba(0,0,0,0.1);">
+    <h3 id="estado_titulo" style="text-align: center; margin-top: 0; color: #155724;">Esperando viaje...</h3>
+    <hr style="border: 0; border-top: 1px solid #c3e6cb;">
+    <div style="font-size: 1.1rem; line-height: 1.6;">
+        <p>👤 <strong>Conductor:</strong> <span id="nombre_en_pantalla" style="color: #155724;">...</span></p>
+        <p>🔢 <strong>Unidad:</strong> <span id="unidad_en_pantalla" style="color: #155724;">...</span></p>
+        <p>🎨 <strong>Color:</strong> <span id="color_en_pantalla" style="color: #155724;">...</span></p>
+        <p>📍 <strong>Estado actual:</strong> <span id="texto_estado" style="font-weight: bold; color: var(--accent);">Buscando...</span></p>
+    </div>
 </div>
 
-<div class="card">
-    <div id="map" style="height:450px;"></div>
+<div class="card" style="padding: 5px; height: 450px; margin-bottom: 30px;">
+    <div id="map" style="height:100%; border-radius: 12px; z-index: 1;"></div>
 </div>
+
+<style>
+    /* Estilos para inputs grandes y legibles */
+    .input-form {
+        padding: 15px; 
+        border-radius: 10px; 
+        border: 2px solid #eee; 
+        font-size: 16px; /* Evita zoom automático en iPhone */
+        background-color: #f9f9f9;
+        color: #333;
+    }
+
+    /* Botón pedir viaje gigante */
+    .btn-pedir {
+        background: var(--accent);
+        color: white;
+        padding: 20px;
+        border: none;
+        border-radius: 12px;
+        font-size: 1.2rem;
+        font-weight: bold;
+        cursor: pointer;
+        box-shadow: 0 4px 12px rgba(39, 174, 96, 0.3);
+        margin-top: 10px;
+    }
+
+    .btn-pedir:active {
+        transform: scale(0.98);
+    }
+
+    .alerta {
+        position: fixed;
+        top: 80px;
+        left: 50%;
+        transform: translateX(-50%);
+        background: #27ae60;
+        color: #fff;
+        padding: 15px 25px;
+        border-radius: 30px;
+        z-index: 9999;
+        font-weight: bold;
+        box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+    }
+</style>
 
 <script>
 document.addEventListener("DOMContentLoaded", function() {
@@ -65,22 +119,22 @@ document.addEventListener("DOMContentLoaded", function() {
     let alertaMostrada = false;
     let ejecutando = false;
 
+    // ICONOS PERSONALIZADOS
     const iconoCliente = L.icon({
         iconUrl: 'https://cdn-icons-png.flaticon.com/512/684/684908.png',
-        iconSize: [35,35]
+        iconSize: [35,35], iconAnchor: [17, 35]
     });
 
     const iconoDestino = L.icon({
         iconUrl: 'https://cdn-icons-png.flaticon.com/512/447/447031.png',
-        iconSize: [35,35]
+        iconSize: [35,35], iconAnchor: [17, 35]
     });
 
     function alertaCerca() {
-        let div = document.createElement("div");
-        div.innerText = "🚨 ¡Tu conductor está muy cerca!";
-        div.style = "position:fixed;top:80px;left:50%;transform:translateX(-50%);background:#27ae60;color:#fff;padding:15px;border-radius:20px;z-index:9999;";
-        document.body.appendChild(div);
-        setTimeout(() => div.remove(), 5000);
+        const divAlerta = document.getElementById("mensaje-alerta");
+        document.getElementById("texto-alerta").innerText = "🚨 ¡Tu conductor está muy cerca!";
+        divAlerta.style.display = "block";
+        setTimeout(() => divAlerta.style.display = "none", 5000);
     }
 
     function initMap(lat, lng) {
@@ -88,7 +142,9 @@ document.addEventListener("DOMContentLoaded", function() {
 
         map = L.map('map').setView([lat, lng], 16);
 
-        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            attribution: '© OpenStreetMap'
+        }).addTo(map);
 
         map.on('click', function(e) {
             let latD = e.latlng.lat;
@@ -96,7 +152,7 @@ document.addEventListener("DOMContentLoaded", function() {
 
             document.getElementById("lat_destino").value = latD;
             document.getElementById("lng_destino").value = lngD;
-            document.getElementById("input_destino").value = "Destino seleccionado ✅";
+            document.getElementById("input_destino").value = "Destino marcado en mapa ✅";
 
             if (marcadorDestino) {
                 marcadorDestino.setLatLng([latD, lngD]);
@@ -104,6 +160,9 @@ document.addEventListener("DOMContentLoaded", function() {
                 marcadorDestino = L.marker([latD, lngD], {icon: iconoDestino}).addTo(map);
             }
         });
+        
+        // Corregir tamaño del mapa por si acaso
+        setTimeout(() => map.invalidateSize(), 500);
     }
 
     if (navigator.geolocation) {
@@ -127,12 +186,10 @@ document.addEventListener("DOMContentLoaded", function() {
                 map.setView([lat, lng], 16);
                 primeraVez = false;
             }
-        });
+        }, (err) => console.log("Error GPS:", err), { enableHighAccuracy: true });
     }
 
-    // 🔥 FUNCIÓN PRINCIPAL CORRECTA
     window.vigilarViaje = function() {
-
         const viajeId = "{{ viaje_id }}";
 
         if (!viajeId || viajeId === "None" || viajeId === "") {
@@ -146,32 +203,28 @@ document.addEventListener("DOMContentLoaded", function() {
         fetch(`/api_estado_viaje/${viajeId}`)
         .then(r => r.json())
         .then(d => {
-
             const panel = document.getElementById("status_conductor");
+            const form = document.getElementById("form-viaje");
 
             if (d.estado === "finalizado" || d.estado === "cancelado") {
                 panel.style.display = "block";
-
                 document.getElementById("estado_titulo").innerText =
                     d.estado === "finalizado" ? "Viaje terminado 🏁" : "Viaje cancelado ❌";
-
                 document.getElementById("texto_estado").innerText = "Redirigiendo...";
-
-                setTimeout(() => location.reload(), 4000);
+                setTimeout(() => location.href = "{{ url_for('login') }}", 3000);
                 return;
             }
 
             if (["aceptado","en_camino","recogido","cerca"].includes(d.estado)) {
-
                 panel.style.display = "block";
+                if(form) form.style.display = "none";
+                
+                const btnCanc = document.getElementById("contenedor-cancelar");
+                if (btnCanc) btnCanc.style.display = "none";
 
-                document.querySelector("form").style.display = "none";
-                const btn = document.getElementById("contenedor-cancelar");
-                if (btn) btn.style.display = "none";
-
-                document.getElementById("nombre_en_pantalla").innerText = d.conductor;
-                document.getElementById("unidad_en_pantalla").innerText = d.unidad;
-                document.getElementById("color_en_pantalla").innerText = d.color;
+                document.getElementById("nombre_en_pantalla").innerText = d.conductor || "Asignando...";
+                document.getElementById("unidad_en_pantalla").innerText = d.unidad || "...";
+                document.getElementById("color_en_pantalla").innerText = d.color || "...";
 
                 const estados = {
                     aceptado: "Conductor asignado",
@@ -180,23 +233,21 @@ document.addEventListener("DOMContentLoaded", function() {
                     cerca: "Está afuera 🚨"
                 };
 
-                document.getElementById("estado_titulo").innerText = "Viaje en curso";
-                document.getElementById("texto_estado").innerText = estados[d.estado];
+                document.getElementById("estado_titulo").innerText = "Detalles del Conductor";
+                document.getElementById("texto_estado").innerText = estados[d.estado] || d.estado;
 
                 if (d.estado === "cerca" && !alertaMostrada) {
                     alertaCerca();
                     alertaMostrada = true;
                 }
             }
-
         })
-        .catch(e => console.log(e))
+        .catch(e => console.log("Error API:", e))
         .finally(() => ejecutando = false);
     }
 
-    // 🔁 LOOP AUTOMÁTICO
+    // Loop cada 3 segundos si hay un viaje
     setInterval(window.vigilarViaje, 3000);
-
 });
 </script>
 
