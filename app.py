@@ -4,6 +4,38 @@ from datetime import datetime, timedelta
 from flask import Flask, render_template, request, redirect, url_for, session, jsonify
 app = Flask(__name__)
 app.secret_key = "secreto_muy_seguro_mi_moto_app_macuil"
+def conductor_activo(user_id):
+    conn = get_db()
+    user = conn.execute(
+        "SELECT estado FROM usuarios WHERE id=?",
+        (user_id,)
+    ).fetchone()
+    conn.close()
+
+    return user and user["estado"] == "activo"
+
+from functools import wraps
+from flask import session, redirect, url_for
+
+def requiere_conductor_activo(f):
+    @wraps(f)
+    def wrapper(*args, **kwargs):
+        user_id = session.get("user_id")
+
+        # Si no hay sesión
+        if not user_id:
+            return redirect(url_for("login"))
+
+        # Si no es conductor
+        if not rol("conductor"):
+            return redirect(url_for("login"))
+
+        # 🔒 Validar estado
+        if not conductor_activo(user_id):
+            return "Tu cuenta está bloqueada o inactiva", 403
+
+        return f(*args, **kwargs)
+    return wrapper
 
 # ---------------------- DB ----------------------
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -338,40 +370,85 @@ def pagar_conductor(id):
         return "Error interno al procesar el pago", 500
 
     return redirect(url_for('admin'))
+
 @app.route("/viajes_disponibles")
 def viajes_disponibles():
     if not rol("conductor"):
         return redirect("/")
 
+    user_id = session.get("user_id")
+    if not user_id or not conductor_activo(user_id):
+        return "Cuenta bloqueada", 403
+
     conn = get_db()
-    viajes = conn.execute("SELECT * FROM viajes WHERE estado='pendiente'").fetchall()
+    viajes = conn.execute(
+        "SELECT * FROM viajes WHERE estado='pendiente'"
+    ).fetchall()
     conn.close()
 
     return render_template("viajes.html", viajes=[dict(v) for v in viajes])
-
 @app.route("/aceptar_viaje/<int:id>")
 def aceptar_viaje(id):
     if not rol("conductor"):
         return redirect(url_for("login"))
 
+    user_id = session.get("user_id")
+    if not user_id:
+        return redirect(url_for("login"))
+
+    if not conductor_activo(user_id):
+        return "Cuenta bloqueada", 403
+
     conn = get_db()
-    conn.execute("""
+
+    cursor = conn.execute("""
         UPDATE viajes
         SET conductor_id=?, estado='aceptado'
         WHERE id=? AND estado='pendiente'
-    """, (session["user_id"], id))
+    """, (user_id, id))
+
     conn.commit()
+
+    if cursor.rowcount == 0:
+        conn.close()
+        return "El viaje ya fue tomado o no existe", 400
+
     conn.close()
 
     return redirect(url_for("conductor"))
+    # 🚨 Intentar aceptar el viaje solo si sigue pendiente
+    cursor = conn.execute("""
+        UPDATE viajes
+        SET conductor_id=?, estado='aceptado'
+        WHERE id=? AND estado='pendiente'
+    """, (user_id, id))
 
+    conn.commit()
+
+    # 🔍 Verificar si realmente se actualizó (evita doble aceptación)
+    if cursor.rowcount == 0:
+        conn.close()
+        return "El viaje ya fue tomado o no existe", 400
+
+    conn.close()
+
+    return redirect(url_for("conductor"))
 @app.route("/cambiar_estado_viaje/<int:id>/<nuevo_estado>")
 def cambiar_estado_viaje(id, nuevo_estado):
     if not rol("conductor"):
         return redirect(url_for("login"))
 
+    user_id = session.get("user_id")
+    if not user_id or not conductor_activo(user_id):
+        return "Cuenta bloqueada", 403
+
     conn = get_db()
-    conn.execute("UPDATE viajes SET estado=? WHERE id=?", (nuevo_estado, id))
+
+    conn.execute(
+        "UPDATE viajes SET estado=? WHERE id=?",
+        (nuevo_estado, id)
+    )
+
     conn.commit()
     conn.close()
 
@@ -403,18 +480,23 @@ def api_viaje_cliente():
         return jsonify({"viaje": dict(viaje)})
     else:
         return jsonify({"viaje": None})
-
 @app.route("/aceptar_viaje_ajax/<int:id>", methods=["POST"])
 def aceptar_viaje_ajax(id):
     if not rol("conductor"):
         return jsonify({"ok": False})
 
+    user_id = session.get("user_id")
+    if not user_id or not conductor_activo(user_id):
+        return jsonify({"ok": False, "error": "Cuenta bloqueada"})
+
     conn = get_db()
+
     conn.execute("""
         UPDATE viajes
         SET conductor_id=?, estado='aceptado'
         WHERE id=? AND estado='pendiente'
-    """, (session["user_id"], id))
+    """, (user_id, id))
+
     conn.commit()
     conn.close()
 
@@ -661,6 +743,15 @@ def api_estado_viaje(viaje_id):
         "unidad": viaje["numero_unidad"] or "",
         "color": viaje["color_vehiculo"] or ""
     })
+def conductor_activo(user_id):
+    conn = get_db()
+    user = conn.execute(
+        "SELECT activo FROM usuarios WHERE id=?",
+        (user_id,)
+    ).fetchone()
+    conn.close()
+
+    return user and user["activo"] == 1
 
 if __name__ == "__main__":
     app.run(debug=True)

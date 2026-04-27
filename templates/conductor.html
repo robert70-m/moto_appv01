@@ -87,107 +87,31 @@ button:disabled {
 </style>
 
 <script>
-// ICONOS
-const iconVerde = L.icon({
-    iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-green.png',
-    shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/0.7.7/images/marker-shadow.png',
-    iconSize: [25, 41],
-    iconAnchor: [12, 41]
-});
+// 🔊 AUDIO
+const sonido = document.getElementById("sonidoNotificacion");
+let audioHabilitado = false;
 
-const iconRojo = L.icon({
-    iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-red.png',
-    shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/0.7.7/images/marker-shadow.png',
-    iconSize: [25, 41],
-    iconAnchor: [12, 41]
-});
-
-// MAPA
-{% if viaje %}
-document.addEventListener("DOMContentLoaded", function() {
-    try {
-        const latO = {{ viaje.lat or 0 }};
-        const lngO = {{ viaje.lng or 0 }};
-        const latD = {{ viaje.lat_destino or 0 }};
-        const lngD = {{ viaje.lng_destino or 0 }};
-
-        if (!latO || !latD) return;
-
-        const map = L.map('map_conductor').setView([latO, lngO], 15);
-
-        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-            attribution: '© OpenStreetMap'
-        }).addTo(map);
-
-        L.Routing.control({
-            waypoints: [
-                L.latLng(latO, lngO),
-                L.latLng(latD, lngD)
-            ],
-            lineOptions: {
-                styles: [{ color: '#2980b9', opacity: 0.8, weight: 6 }]
-            },
-            addWaypoints: false,
-            draggableWaypoints: false,
-            show: false,
-            createMarker: function(i, wp) {
-                return L.marker(wp.latLng, {
-                    icon: i === 0 ? iconVerde : iconRojo
-                }).bindPopup(i === 0 ? "📍 Recoger Cliente" : "🏁 Destino");
-            }
-        }).addTo(map);
-
-        setTimeout(() => map.invalidateSize(), 500);
-
-    } catch (e) {
-        console.error("Error mapa:", e);
+// desbloqueo obligatorio en móviles
+document.addEventListener("click", () => {
+    if (!audioHabilitado) {
+        sonido.play().then(() => {
+            sonido.pause();
+            sonido.currentTime = 0;
+            audioHabilitado = true;
+        }).catch(()=>{});
     }
 });
-{% endif %}
 
-// ESTADO
-function actualizarEstado(nuevoEstado, viajeId) {
-    if (!viajeId) {
-        alert("No hay viaje activo.");
-        return;
+// 📳 vibración
+function vibrar() {
+    if (navigator.vibrate) {
+        navigator.vibrate([300, 200, 300]);
     }
-
-    fetch(`/cambiar_estado_viaje/${viajeId}/${nuevoEstado}`)
-    .then(res => {
-        if (res.ok) {
-            window.location.href = nuevoEstado === 'finalizado'
-                ? "{{ url_for('viajes_disponibles') }}"
-                : "{{ url_for('conductor') }}";
-        } else {
-            alert("Error al actualizar estado");
-        }
-    })
-    .catch(() => alert("Error de conexión"));
 }
 
-// GPS (con manejo de error)
-if (navigator.geolocation) {
-    navigator.geolocation.watchPosition(
-        pos => {
-            let fd = new FormData();
-            fd.append("lat", pos.coords.latitude);
-            fd.append("lng", pos.coords.longitude);
-
-            fetch("{{ url_for('actualizar_ubicacion') }}", {
-                method: "POST",
-                body: fd
-            });
-        },
-        err => {
-            console.log("GPS no disponible");
-        },
-        { enableHighAccuracy: true }
-    );
-}
-
-// ALERTA NUEVOS VIAJES
+// 🚨 ALERTA
 let alertaActiva = false;
-let intervaloSonido;
+let intervaloSonido = null;
 let ultimoId = 0;
 
 function iniciarAlerta() {
@@ -195,20 +119,27 @@ function iniciarAlerta() {
 
     alertaActiva = true;
     document.getElementById("alerta-viaje").style.display = "block";
-
-    const sonido = document.getElementById("sonidoNotificacion");
+    vibrar();
 
     intervaloSonido = setInterval(() => {
-        sonido.play().catch(()=>{});
+        if (audioHabilitado) {
+            sonido.currentTime = 0;
+            sonido.play().catch(()=>{});
+        }
     }, 2000);
 }
 
 function detenerAlerta() {
     alertaActiva = false;
     document.getElementById("alerta-viaje").style.display = "none";
-    clearInterval(intervaloSonido);
+
+    if (intervaloSonido) {
+        clearInterval(intervaloSonido);
+        intervaloSonido = null;
+    }
 }
 
+// 🔍 NUEVOS VIAJES
 setInterval(() => {
     {% if not viaje %}
     fetch(`{{ url_for('verificar_viajes') }}?ultimo_id=${ultimoId}`)
@@ -223,7 +154,7 @@ setInterval(() => {
     {% endif %}
 }, 5000);
 
-// CANCELACIONES
+// ❌ CANCELACIONES
 let ultimoCancelado = 0;
 
 setInterval(() => {
@@ -231,6 +162,7 @@ setInterval(() => {
     .then(r => r.json())
     .then(data => {
         if (data.cancelado) {
+            detenerAlerta();
             alert("❌ El cliente canceló el viaje");
             ultimoCancelado = data.id;
             window.location.href = "{{ url_for('viajes_disponibles') }}";
@@ -238,7 +170,6 @@ setInterval(() => {
     })
     .catch(()=>{});
 }, 4000);
-
 </script>
 
 {% endblock %}
