@@ -188,63 +188,69 @@ document.addEventListener("DOMContentLoaded", function() {
             }
         }, (err) => console.log("Error GPS:", err), { enableHighAccuracy: true });
     }
-
     window.vigilarViaje = function() {
-        const viajeId = "{{ viaje_id }}";
+    const viajeId = "{{ viaje_id }}";
 
-        if (!viajeId || viajeId === "None" || viajeId === "") {
-            document.getElementById("status_conductor").style.display = "none";
+    if (!viajeId || viajeId === "None" || viajeId === "") {
+        document.getElementById("status_conductor").style.display = "none";
+        return;
+    }
+
+    if (ejecutando) return;
+    ejecutando = true;
+
+    fetch(`/api_estado_viaje/${viajeId}`)
+    .then(r => r.json())
+    .then(d => {
+        const panel = document.getElementById("status_conductor");
+        const form = document.getElementById("form-viaje");
+
+        if (d.estado === "finalizado" || d.estado === "cancelado") {
+            panel.style.display = "block";
+            document.getElementById("estado_titulo").innerText =
+                d.estado === "finalizado" ? "Viaje terminado 🏁" : "Viaje cancelado ❌";
+            document.getElementById("texto_estado").innerText = "¡Gracias por viajar! Redirigiendo...";
+            
+            // CORRECCIÓN AQUÍ: 
+            // En lugar de enviarlo a 'login', lo enviamos a la raíz '/' 
+            // para que pueda pedir otra moto de inmediato.
+            setTimeout(() => {
+                location.href = "/"; 
+            }, 3500);
             return;
         }
 
-        if (ejecutando) return;
-        ejecutando = true;
+        if (["aceptado","en_camino","recogido","cerca"].includes(d.estado)) {
+            panel.style.display = "block";
+            if(form) form.style.display = "none";
+            
+            const btnCanc = document.getElementById("contenedor-cancelar");
+            if (btnCanc) btnCanc.style.display = "none";
 
-        fetch(`/api_estado_viaje/${viajeId}`)
-        .then(r => r.json())
-        .then(d => {
-            const panel = document.getElementById("status_conductor");
-            const form = document.getElementById("form-viaje");
+            document.getElementById("nombre_en_pantalla").innerText = d.conductor || "Asignando...";
+            document.getElementById("unidad_en_pantalla").innerText = d.unidad || "...";
+            document.getElementById("color_en_pantalla").innerText = d.color || "...";
 
-            if (d.estado === "finalizado" || d.estado === "cancelado") {
-                panel.style.display = "block";
-                document.getElementById("estado_titulo").innerText =
-                    d.estado === "finalizado" ? "Viaje terminado 🏁" : "Viaje cancelado ❌";
-                document.getElementById("texto_estado").innerText = "Redirigiendo...";
-                setTimeout(() => location.href = "{{ url_for('login') }}", 3000);
-                return;
+            const estados = {
+                aceptado: "Conductor asignado",
+                en_camino: "Va hacia ti 🛵",
+                recogido: "En viaje 🚀",
+                cerca: "Está afuera 🚨"
+            };
+
+            document.getElementById("estado_titulo").innerText = "Detalles del Conductor";
+            document.getElementById("texto_estado").innerText = estados[d.estado] || d.estado;
+
+            if (d.estado === "cerca" && !alertaMostrada) {
+                alertaCerca();
+                alertaMostrada = true;
             }
-
-            if (["aceptado","en_camino","recogido","cerca"].includes(d.estado)) {
-                panel.style.display = "block";
-                if(form) form.style.display = "none";
-                
-                const btnCanc = document.getElementById("contenedor-cancelar");
-                if (btnCanc) btnCanc.style.display = "none";
-
-                document.getElementById("nombre_en_pantalla").innerText = d.conductor || "Asignando...";
-                document.getElementById("unidad_en_pantalla").innerText = d.unidad || "...";
-                document.getElementById("color_en_pantalla").innerText = d.color || "...";
-
-                const estados = {
-                    aceptado: "Conductor asignado",
-                    en_camino: "Va hacia ti 🛵",
-                    recogido: "En viaje 🚀",
-                    cerca: "Está afuera 🚨"
-                };
-
-                document.getElementById("estado_titulo").innerText = "Detalles del Conductor";
-                document.getElementById("texto_estado").innerText = estados[d.estado] || d.estado;
-
-                if (d.estado === "cerca" && !alertaMostrada) {
-                    alertaCerca();
-                    alertaMostrada = true;
-                }
-            }
-        })
-        .catch(e => console.log("Error API:", e))
-        .finally(() => ejecutando = false);
-    }
+        }
+    })
+    .catch(e => console.log("Error API:", e))
+    .finally(() => ejecutando = false);
+}
+    
 
     // Loop cada 3 segundos si hay un viaje
     setInterval(window.vigilarViaje, 3000);
