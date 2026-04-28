@@ -387,39 +387,51 @@ def pagar_conductor(id):
 
 @app.route("/viajes_disponibles")
 def viajes_disponibles():
+    # 1. Validación de rol
     if not rol("conductor"):
         return redirect("/")
 
     user_id = session.get("user_id")
+    
+    # 2. 🔒 VALIDACIÓN CRÍTICA: Solo conductores activos pueden ver viajes
+    if not conductor_activo(user_id):
+        return render_template(
+            "viajes.html", 
+            viaje_activo=None, 
+            viajes=[], 
+            mensaje_error="Tu cuenta está inactiva. Realiza tu pago para ver viajes."
+        )
+
     conn = get_db()
 
-    # 🔒 Buscar si tiene viaje activo
-    viaje_activo = conn.execute("""
+    # 3. 🔒 Buscar si tiene viaje activo (ignora cancelados y finalizados)
+    viaje_activo_row = conn.execute("""
         SELECT * FROM viajes
         WHERE conductor_id=?
-        AND estado IN ('aceptado','en_camino','recogido')
+        AND estado IN ('aceptado', 'en_camino', 'recogido', 'cerca')
         ORDER BY id DESC LIMIT 1
     """, (user_id,)).fetchone()
 
-    if viaje_activo:
+    if viaje_activo_row:
         conn.close()
         return render_template(
             "viajes.html",
-            viaje_activo=dict(viaje_activo),
+            viaje_activo=dict(viaje_activo_row),
             viajes=None
         )
 
-    # ✅ Si NO tiene viaje activo, mostrar disponibles
-    viajes = conn.execute("""
+    # 4. ✅ Mostrar SOLO los que están realmente pendientes (limpia cancelados)
+    viajes_rows = conn.execute("""
         SELECT * FROM viajes
-        WHERE estado='pendiente'
+        WHERE estado = 'pendiente'
+        ORDER BY id DESC
     """).fetchall()
 
     conn.close()
 
     return render_template(
         "viajes.html",
-        viajes=[dict(v) for v in viajes],
+        viajes=[dict(v) for v in viajes_rows],
         viaje_activo=None
     )
 @app.route("/aceptar_viaje/<int:id>")
