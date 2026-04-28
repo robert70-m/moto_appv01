@@ -37,18 +37,46 @@
             PEDIR VIAJE AHORA 🚀
         </button>
     </form>
-
     {% if viaje_id %}
-    <div id="contenedor-cancelar" style="margin-top: 10px;">
-        <a id="btn-cancelar" href="{{ url_for('cancelar_viaje', viaje_id=viaje_id) }}"
-           onclick="return confirm('¿Seguro que deseas cancelar el viaje?')">
-            <button style="background:#e74c3c; color:white; padding:15px; border:none; border-radius:10px; width:100%; font-weight:bold; font-size:1rem; cursor:pointer;">
-                ❌ Cancelar Viaje
-            </button>
-        </a>
-    </div>
-    {% endif %}
+<div id="contenedor-cancelar" style="margin-top: 10px;">
+    <button id="btn-cancelar" 
+            onclick="ejecutarCancelacion('{{ viaje_id }}')"
+            style="background:#e74c3c; color:white; padding:15px; border:none; border-radius:10px; width:100%; font-weight:bold; font-size:1rem; cursor:pointer;">
+        ❌ Cancelar Viaje
+    </button>
 </div>
+
+<script>
+function ejecutarCancelacion(viajeId) {
+    if (confirm('¿Seguro que deseas cancelar el viaje?')) {
+        const btn = document.getElementById('btn-cancelar');
+        
+        // Efecto visual instantáneo: deshabilitar para que no den mil clics
+        btn.disabled = true;
+        btn.innerText = "Procesando...";
+        btn.style.opacity = "0.5";
+
+        // Aquí ocurre la magia "invisible"
+        fetch(`/cancelar_viaje/${viajeId}`, {
+            method: 'POST' // O GET, según soporte tu ruta
+        })
+        .then(() => {
+            // En lugar de esperar a que toda la página cargue, 
+            // simplemente refrescamos o redirigimos cuando ya es seguro
+            window.location.href = "{{ url_for('cliente') }}";
+        })
+        .catch(err => {
+            alert("Error al cancelar. Intenta de nuevo.");
+            btn.disabled = false;
+            btn.style.opacity = "1";
+            btn.innerText = "❌ Cancelar Viaje";
+        });
+    }
+}
+</script>
+{% endif %}
+
+    </div>
 
 <div id="status_conductor" style="display:none; padding:20px; background:#d4edda; border-radius:15px; margin:15px 0; border:2px solid #c3e6cb; box-shadow: 0 4px 10px rgba(0,0,0,0.1);">
     <h3 id="estado_titulo" style="text-align: center; margin-top: 0; color: #155724;">Esperando viaje...</h3>

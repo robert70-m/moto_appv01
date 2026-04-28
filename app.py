@@ -319,31 +319,20 @@ def pedir_viaje():
     conn.commit()
     conn.close()
     return redirect(url_for("cliente"))
-@app.route("/cancelar_viaje/<int:viaje_id>")
+@app.route("/cancelar_viaje/<int:viaje_id>", methods=['GET', 'POST'])
 def cancelar_viaje(viaje_id):
     conn = get_db()
+    # Verificamos rápido si el viaje existe y está pendiente
+    viaje = conn.execute("SELECT estado FROM viajes WHERE id=?", (viaje_id,)).fetchone()
 
-    viaje = conn.execute(
-        "SELECT estado FROM viajes WHERE id=?",
-        (viaje_id,)
-    ).fetchone()
-
-    if not viaje:
-        conn.close()
-        return redirect(url_for("cliente"))
-
-    # 🚫 SOLO permitir cancelar si está pendiente
-    if viaje["estado"] != "pendiente":
-        conn.close()
-        return redirect(url_for("cliente"))
-
-    conn.execute(
-        "UPDATE viajes SET estado='cancelado' WHERE id=?",
-        (viaje_id,)
-    )
-    conn.commit()
+    if viaje and viaje["estado"] == "pendiente":
+        conn.execute("UPDATE viajes SET estado='cancelado' WHERE id=?", (viaje_id,))
+        conn.commit()
+    
     conn.close()
-
+    
+    # Esta redirección es el "seguro" por si fallara el JS, 
+    # pero con el script que pusimos, la respuesta será casi instantánea.
     return redirect(url_for("cliente"))
 # ---------------------- CONDUCTOR ----------------------
 @app.route("/estado_conductor")
