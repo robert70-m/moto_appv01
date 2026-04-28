@@ -58,7 +58,6 @@
 </div>
 
 <style>
-    /* Estilo para los botones de estado grandes */
     .btn-estado {
         width: 100%;
         padding: 18px;
@@ -100,14 +99,13 @@
 </style>
 
 <script>
-// 🔴 FUNCIÓN ACTUALIZAR ESTADO
+// --- TU LÓGICA DE ESTADOS (MANTENIDA) ---
 function actualizarEstado(nuevoEstado, viajeId) {
     if (!viajeId || viajeId === "") {
         alert("No hay un ID de viaje válido");
         return;
     }
 
-    // Mostrar un pequeño aviso de carga
     const btn = event.currentTarget;
     const originalText = btn.innerHTML;
     btn.innerHTML = "Procesando...";
@@ -135,7 +133,7 @@ function actualizarEstado(nuevoEstado, viajeId) {
     });
 }
 
-// 🗺️ MAPA
+// --- TU LÓGICA DE MAPA (MANTENIDA) ---
 {% if viaje %}
 document.addEventListener("DOMContentLoaded", function() {
     const latO = {{ viaje.lat or 0 }};
@@ -151,7 +149,6 @@ document.addEventListener("DOMContentLoaded", function() {
         attribution: '© OpenStreetMap'
     }).addTo(map);
 
-    // Iconos un poco más grandes para móvil
     const iconVerde = L.icon({
         iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-green.png',
         shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/0.7.7/images/marker-shadow.png',
@@ -167,7 +164,6 @@ document.addEventListener("DOMContentLoaded", function() {
     L.marker([latO, lngO], {icon: iconVerde}).addTo(map).bindPopup("📍 Origen");
     L.marker([latD, lngD], {icon: iconRojo}).addTo(map).bindPopup("🏁 Destino");
 
-    // Trazar ruta
     fetch(`https://router.project-osrm.org/route/v1/driving/${lngO},${latO};${lngD},${latD}?overview=full&geometries=geojson`)
     .then(res => res.json())
     .then(data => {
@@ -179,25 +175,42 @@ document.addEventListener("DOMContentLoaded", function() {
         }
     });
 
-    // Forzar redibujado del mapa para evitar cuadros grises
     setTimeout(() => map.invalidateSize(), 500);
 });
 {% endif %}
 
-// ALERTAS
+// --- TU LÓGICA DE ALERTAS (CORREGIDA Y ACTIVADA) ---
 let alertaActiva = false;
+
 function iniciarAlerta() {
     if (alertaActiva) return;
     alertaActiva = true;
     document.getElementById("alerta-viaje").style.display = "block";
     const sonido = document.getElementById("sonidoNotificacion");
-    if(sonido) sonido.play().catch(e => console.log("Audio bloqueado"));
+    if(sonido) {
+        sonido.play().catch(e => console.log("Audio bloqueado por navegador"));
+    }
 }
 
 function detenerAlerta() {
     alertaActiva = false;
     document.getElementById("alerta-viaje").style.display = "none";
 }
+
+// 🕵️ VIGILANTE: Revisa viajes cada 10 segundos
+setInterval(function() {
+    // Si NO tiene un viaje activo, buscamos nuevos
+    {% if not viaje %}
+    fetch('/api/verificar_viajes') // Asegúrate de tener esta ruta en app.py
+    .then(res => res.json())
+    .then(data => {
+        if (data.hay_viajes) {
+            iniciarAlerta();
+        }
+    })
+    .catch(e => console.log("Error buscando viajes"));
+    {% endif %}
+}, 10000);
 </script>
 
 {% endblock %}

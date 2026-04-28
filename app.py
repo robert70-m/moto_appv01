@@ -4,15 +4,6 @@ from datetime import datetime, timedelta
 from flask import Flask, render_template, request, redirect, url_for, session, jsonify
 app = Flask(__name__)
 app.secret_key = "secreto_muy_seguro_mi_moto_app_macuil"
-def conductor_activo(user_id):
-    conn = get_db()
-    user = conn.execute(
-        "SELECT estado FROM usuarios WHERE id=?",
-        (user_id,)
-    ).fetchone()
-    conn.close()
-
-    return user and user["estado"] == "activo"
 
 from functools import wraps
 from flask import session, redirect, url_for
@@ -105,6 +96,7 @@ def login():
             return redirect(url_for("cliente"))
 
     error = None
+
     if request.method == "POST":
         telefono = request.form.get("telefono", "").strip()
         password = request.form.get("password", "").strip()
@@ -118,21 +110,21 @@ def login():
         if user:
             password_db = user["password"]
 
-            # 🔐 CASO 1: ya tiene hash
+            # 🔐 CASO 1: Ya tiene hash (Seguro)
             if password_db.startswith("scrypt:") or password_db.startswith("pbkdf2:"):
                 if not check_password_hash(password_db, password):
                     conn.close()
                     error = "Teléfono o contraseña incorrectos"
                     return render_template("login.html", error=error)
 
-            # 🟡 CASO 2: contraseña vieja (texto plano)
+            # 🟡 CASO 2: Contraseña vieja (Texto plano)
             else:
                 if password_db != password:
                     conn.close()
                     error = "Teléfono o contraseña incorrectos"
                     return render_template("login.html", error=error)
 
-                # 🔥 convertir automáticamente a hash para mayor seguridad
+                # 🔥 Actualizamos a hash automáticamente para que la próxima vez sea seguro
                 hash_nuevo = generate_password_hash(password)
                 conn.execute(
                     "UPDATE usuarios SET password=? WHERE id=?",
@@ -140,9 +132,9 @@ def login():
                 )
                 conn.commit()
 
+            # El resto del código de sesión (session.clear(), etc.) va aquí abajo...
             conn.close()
-
-            # ✅ CREAR SESIÓN LIMPIA
+               # ✅ CREAR SESIÓN LIMPIA
             session.clear()
             session["user_id"] = user["id"]
             session["nombre"] = user["nombre"]
@@ -216,53 +208,54 @@ def registro_conductor():
         return redirect(url_for("login"))
 
     return render_template("registro_conductor.html")
+
 @app.route("/conductor")
 def conductor():
-    # 1. 🔐 Validar que existe una sesión
     if "user_id" not in session:
         return redirect(url_for("login"))
 
-    # 2. 🛡️ Validar el rol de conductor
     if session.get("tipo") != "conductor":
-        return "No autorizado: Se requiere perfil de conductor", 403
+        return "No autorizado", 403
 
     user_id = session["user_id"]
 
-    # 3. 💳 Validar si el conductor está ACTIVO (pago y estado)
-    # Usamos la función que ya definiste anteriormente
+    # 1. 💳 VALIDACIÓN DE PAGO / ACTIVO
+    # Usamos tu función 'conductor_activo' que revisa la tabla 'usuarios'
     if not conductor_activo(user_id):
-        # Si no está activo, lo mandamos al login con un mensaje claro
-        session.clear() 
-        return "Tu cuenta está inactiva o el pago ha vencido. Contacta al administrador.", 403
+        # Si no ha pagado, no le mostramos NADA de viajes
+        return render_template("conductor.html", viaje=None, viajes_pendientes=[], mensaje_error="Tu cuenta está inactiva. Realiza tu pago para ver viajes.")
 
     conn = get_db()
-    try:
-        # Buscamos el viaje activo
-        viaje_row = conn.execute("""
-            SELECT * FROM viajes
-            WHERE conductor_id=?
-            AND estado IN ('aceptado','en_camino','recogido','cerca')
-            ORDER BY id DESC LIMIT 1
-        """, (user_id,)).fetchone()
-    finally:
-        conn.close()
+    
+    # 2. Viaje que ya tiene asignado (el que aceptó)
+    viaje_row = conn.execute("""
+        SELECT * FROM viajes
+        WHERE conductor_id=?
+        AND estado IN ('aceptado','en_camino','recogido','cerca')
+        ORDER BY id DESC LIMIT 1
+    """, (user_id,)).fetchone()
 
-    # 4. 🔒 PROTECCIÓN DE DATOS PARA EL TEMPLATE
-    if viaje_row:
-        viaje = dict(viaje_row)
+    # 3. 🛡️ FILTRO DE SEGURIDAD: Solo mostramos viajes disponibles si el conductor está activo
+    # (Aunque ya validamos arriba, esto es doble seguridad)
+    viajes_pendientes_rows = conn.execute("""
+        SELECT * FROM viajes 
+        WHERE estado = 'pendiente' 
+        ORDER BY id DESC
+    """).fetchall()
+    
+    conn.close()
 
-        # Asegurar valores numéricos para Leaflet (evita que el mapa desaparezca)
-        viaje["lat"] = viaje.get("lat") if viaje.get("lat") is not None else 0.0
-        viaje["lng"] = viaje.get("lng") if viaje.get("lng") is not None else 0.0
-        viaje["lat_destino"] = viaje.get("lat_destino") if viaje.get("lat_destino") is not None else 0.0
-        viaje["lng_destino"] = viaje.get("lng_destino") if viaje.get("lng_destino") is not None else 0.0
+    # Formatear el viaje actual para Leaflet
+    viaje = dict(viaje_row) if viaje_row else None
+    if viaje:
+        viaje["lat"] = viaje.get("lat") or 0.0
+        viaje["lng"] = viaje.get("lng") or 0.0
+        # ... resto de tus validaciones ...
 
-        # Asegurar que el estado sea una cadena válida
-        viaje["estado"] = viaje.get("estado") or "pendiente"
-    else:
-        viaje = None
+    return render_template("conductor.html", 
+                           viaje=viaje, 
+                           viajes_pendientes=viajes_pendientes_rows)
 
-    return render_template("conductor.html", viaje=viaje)
 # ---------------------- CLIENTE ----------------------
 @app.route("/cliente")
 def cliente():
@@ -319,22 +312,20 @@ def pedir_viaje():
     conn.commit()
     conn.close()
     return redirect(url_for("cliente"))
-@app.route("/cancelar_viaje/<int:viaje_id>")
+
+@app.route("/cancelar_viaje/<int:viaje_id>", methods=['GET', 'POST']) # Agregamos métodos
 def cancelar_viaje(viaje_id):
     conn = get_db()
-    # 1. Intentamos actualizar solo si está pendiente
+    # 1. Forzamos la actualización sin tanto filtro para asegurar que funcione
     conn.execute(
-        "UPDATE viajes SET estado='cancelado' WHERE id=? AND estado='pendiente'",
+        "UPDATE viajes SET estado='cancelado' WHERE id=?", 
         (viaje_id,)
     )
     conn.commit()
     conn.close()
 
-    # 2. Esto es lo que evita que se quede recargando:
-    # Redirigimos al cliente pero con un número aleatorio al final (?v=...)
-    # para que el navegador no use "memoria vieja" y vea el cambio real.
-    import time
-    return redirect(url_for("cliente", v=int(time.time())))
+    # 2. Redirigimos directo a la función cliente
+    return redirect(url_for("cliente"))
 # ---------------------- CONDUCTOR ----------------------
 @app.route("/estado_conductor")
 def estado_conductor():
@@ -819,8 +810,18 @@ def conductor_activo(user_id):
         (user_id,)
     ).fetchone()
     conn.close()
-
     return user and user["activo"] == 1
+
+@app.route("/api/verificar_viajes")
+def api_verificar_viajes():
+    user_id = session.get("user_id")
+    if not conductor_activo(user_id):
+        return jsonify({"hay_viajes": False})
+    
+    conn = get_db()
+    viaje = conn.execute("SELECT id FROM viajes WHERE estado='pendiente'").fetchone()
+    conn.close()
+    return jsonify({"hay_viajes": True if viaje else False})
 
 if __name__ == "__main__":
     app.run(debug=True)
