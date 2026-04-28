@@ -118,25 +118,24 @@ document.addEventListener("DOMContentLoaded", function() {
     {% endfor %}
     {% endif %}
 });
-
-// 3. FUNCIÓN PARA ACEPTAR VIAJE Y MOSTRAR ALERTA SI YA NO ESTÁ
 function aceptarViaje(viajeId) {
     fetch(`/aceptar_viaje/${viajeId}`)
     .then(res => res.json())
     .then(data => {
+        // El servidor debe responder con un status
         if (data.status === "OK") {
             window.location.href = "/conductor";
         } else {
-            // Notificación al conductor si alguien más lo ganó
-            alert("⚠️ " + data.mensaje); 
+            // AQUÍ es donde el conductor recibe el aviso
+            alert("⚠️ " + data.mensaje); // El mensaje dirá: "Este viaje ya fue tomado"
             window.location.reload();
         }
     })
     .catch(err => {
-        alert("Error de conexión. Intenta de nuevo.");
-        console.error(err);
+        alert("Error al conectar con el servidor.");
     });
 }
+// 3. FUNCIÓN PARA ACEPTAR VIAJE Y MOSTRAR ALERTA SI YA NO ESTÁ
 
 // 4. LÓGICA DE ALERTA DE NUEVOS VIAJES
 let alertaActiva = false;

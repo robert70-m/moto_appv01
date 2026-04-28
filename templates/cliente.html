@@ -134,58 +134,84 @@ document.addEventListener("DOMContentLoaded", function() {
             if (primeraVez) { map.setView([lat, lng], 16); primeraVez = false; }
         }, null, { enableHighAccuracy: true });
     }
-
     window.vigilarViaje = function() {
-        const viajeId = "{{ viaje_id }}";
-        if (!viajeId || viajeId === "None" || viajeId === "") return;
-        if (ejecutando) return;
-        ejecutando = true;
+    const viajeId = "{{ viaje_id }}";
+    // Si no hay ID, no hacemos nada
+    if (!viajeId || viajeId === "None" || viajeId === "") return;
+    if (ejecutando) return;
+    ejecutando = true;
 
-        fetch(`/api_estado_viaje/${viajeId}`)
-        .then(r => r.json())
-        .then(d => {
-            const panel = document.getElementById("status_conductor");
-            const form = document.getElementById("form-viaje");
-            const btnCanc = document.getElementById("contenedor-cancelar");
+    fetch(`/api_estado_viaje/${viajeId}`)
+    .then(r => r.json())
+    .then(d => {
+        const panel = document.getElementById("status_conductor");
+        const form = document.getElementById("form-viaje");
+        const btnCanc = document.getElementById("contenedor-cancelar");
 
-            // 1. Manejo de cancelación externa
-            if (d.estado === "cancelado" || d.estado === "no_existe") {
-                alert("📢 El viaje ya no está disponible.");
-                window.location.replace("{{ url_for('cliente') }}");
-                return;
+        // 1. SI EL VIAJE ESTÁ PENDIENTE: No hacemos nada, solo esperamos.
+        if (d.estado === "pendiente") {
+            return; 
+        }
+
+        // 2. MANEJO DE CANCELACIÓN: Solo si el estado es explícitamente cancelado o no existe
+        if (d.estado === "cancelado" || d.estado === "no_existe") {
+            // Evitamos que el bucle siga pidiendo datos
+            viajeId = ""; 
+            alert("📢 El viaje ha sido cancelado o ya no está disponible.");
+            window.location.replace("{{ url_for('cliente') }}");
+            return;
+        }
+
+        // 3. MOTO ASIGNADA Y ESTADOS DE CAMINO
+        if (["aceptado", "en_camino", "recogido", "cerca"].includes(d.estado)) {
+            
+            // Solo mandamos el alert de "Conductor tomado" la primera vez que cambia de pendiente a aceptado
+            if (panel.style.display === "none" && !alertaTomadaMostrada) {
+                alert("✅ ¡Un conductor ha tomado tu viaje! Ya va en camino.");
+                alertaTomadaMostrada = true;
             }
 
-            // 2. Manejo de conductor asignado y estados de camino
-            if (["aceptado","en_camino","recogido","cerca"].includes(d.estado)) {
-                if (panel.style.display === "none" && !alertaTomadaMostrada) {
-                    alert("✅ ¡Un conductor ha tomado tu viaje! Ya va en camino.");
-                    alertaTomadaMostrada = true;
-                }
+            panel.style.display = "block";
+            if(form) form.style.display = "none";
+            if (btnCanc) btnCanc.style.display = "none";
 
-                panel.style.display = "block";
-                if(form) form.style.display = "none";
-                if (btnCanc) btnCanc.style.display = "none";
+            // Actualizar datos del chofer
+            document.getElementById("nombre_en_pantalla").innerText = d.conductor || "Asignado";
+            document.getElementById("unidad_en_pantalla").innerText = d.unidad || "S/N";
+            document.getElementById("color_en_pantalla").innerText = d.color || "N/A";
 
-                document.getElementById("nombre_en_pantalla").innerText = d.conductor || "Asignado";
-                document.getElementById("unidad_en_pantalla").innerText = d.unidad || "S/N";
-                document.getElementById("color_en_pantalla").innerText = d.color || "N/A";
+            const textos = { 
+                aceptado: "Moto asignada", 
+                en_camino: "En camino 🛵", 
+                recogido: "En viaje 🚀", 
+                cerca: "¡Ya llegó! 🚨" 
+            };
+            document.getElementById("texto_estado").innerText = textos[d.estado] || d.estado;
 
-                const textos = { 
-                    aceptado: "Moto asignada", 
-                    en_camino: "En camino 🛵", 
-                    recogido: "En viaje 🚀", 
-                    cerca: "¡Ya llegó! 🚨" 
-                };
-                document.getElementById("texto_estado").innerText = textos[d.estado] || d.estado;
-
-                // Alerta visual de proximidad
-                if (d.estado === "cerca" && !alertaFueraMostrada) {
-                    document.getElementById("mensaje-alerta").style.display = "block";
+            // Alerta visual de proximidad
+            if (d.estado === "cerca" && !alertaFueraMostrada) {
+                const msgDiv = document.getElementById("mensaje-alerta");
+                if (msgDiv) {
+                    msgDiv.style.display = "block";
                     document.getElementById("texto-alerta").innerText = "🚨 ¡Tu conductor está afuera!";
-                    alertaFueraMostrada = true;
                 }
+                alertaFueraMostrada = true;
             }
+        }
 
+        // 4. FINALIZADO
+        if (d.estado === "finalizado") {
+            alert("🏁 ¡Has llegado a tu destino!");
+            window.location.replace("{{ url_for('cliente') }}");
+        }
+    })
+    .catch(err => console.log("Reintentando conexión..."))
+    .finally(() => {
+        // Importante: liberar el candado para la siguiente ejecución del setInterval
+        ejecutando = false;
+    });
+}
+    
             // 3. Finalización
             if (d.estado === "finalizado") {
                 alert("🏁 ¡Has llegado a tu destino!");
