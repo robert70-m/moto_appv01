@@ -136,7 +136,6 @@ document.addEventListener("DOMContentLoaded", function() {
     }
     window.vigilarViaje = function() {
     const viajeId = "{{ viaje_id }}";
-    // Si no hay ID, no hacemos nada
     if (!viajeId || viajeId === "None" || viajeId === "") return;
     if (ejecutando) return;
     ejecutando = true;
@@ -148,34 +147,33 @@ document.addEventListener("DOMContentLoaded", function() {
         const form = document.getElementById("form-viaje");
         const btnCanc = document.getElementById("contenedor-cancelar");
 
-        // 1. SI EL VIAJE ESTÁ PENDIENTE: No hacemos nada, solo esperamos.
+        // 1. SI ESTÁ PENDIENTE: Solo esperamos (No quitamos el mapa)
         if (d.estado === "pendiente") {
             return; 
         }
 
-        // 2. MANEJO DE CANCELACIÓN: Solo si el estado es explícitamente cancelado o no existe
+        // 2. SI SE CANCELÓ O NO EXISTE
         if (d.estado === "cancelado" || d.estado === "no_existe") {
-            // Evitamos que el bucle siga pidiendo datos
-            viajeId = ""; 
-            alert("📢 El viaje ha sido cancelado o ya no está disponible.");
+            alert("📢 El viaje ya no está disponible.");
             window.location.replace("{{ url_for('cliente') }}");
             return;
         }
 
-        // 3. MOTO ASIGNADA Y ESTADOS DE CAMINO
+        // 3. SI YA HAY CONDUCTOR (Aceptado, En camino, Recogido, Cerca)
         if (["aceptado", "en_camino", "recogido", "cerca"].includes(d.estado)) {
             
-            // Solo mandamos el alert de "Conductor tomado" la primera vez que cambia de pendiente a aceptado
-            if (panel.style.display === "none" && !alertaTomadaMostrada) {
-                alert("✅ ¡Un conductor ha tomado tu viaje! Ya va en camino.");
-                alertaTomadaMostrada = true;
+            // Mostrar panel de info y ocultar formulario de pedido
+            if (panel.style.display === "none") {
+                if (!alertaTomadaMostrada) {
+                    alert("✅ ¡Un conductor ha tomado tu viaje!");
+                    alertaTomadaMostrada = true;
+                }
+                panel.style.display = "block";
+                if(form) form.style.display = "none";
+                if (btnCanc) btnCanc.style.display = "none";
             }
 
-            panel.style.display = "block";
-            if(form) form.style.display = "none";
-            if (btnCanc) btnCanc.style.display = "none";
-
-            // Actualizar datos del chofer
+            // Actualizar datos del chofer en pantalla
             document.getElementById("nombre_en_pantalla").innerText = d.conductor || "Asignado";
             document.getElementById("unidad_en_pantalla").innerText = d.unidad || "S/N";
             document.getElementById("color_en_pantalla").innerText = d.color || "N/A";
@@ -188,16 +186,41 @@ document.addEventListener("DOMContentLoaded", function() {
             };
             document.getElementById("texto_estado").innerText = textos[d.estado] || d.estado;
 
-            // Alerta visual de proximidad
+            // --- AQUÍ ESTÁ LO DEL MAPA QUE FALTABA ---
+            // Si el API manda latitud y longitud del conductor, movemos un marcador
+            if (d.lat_conductor && d.lng_conductor && typeof L !== 'undefined' && map) {
+                if (!window.marcadorConductor) {
+                    const iconoMoto = L.icon({
+                        iconUrl: 'https://cdn-icons-png.flaticon.com/512/71/71422.png', // Icono de moto
+                        iconSize: [30, 30],
+                        iconAnchor: [15, 15]
+                    });
+                    window.marcadorConductor = L.marker([d.lat_conductor, d.lng_conductor], {icon: iconoMoto}).addTo(map);
+                } else {
+                    window.marcadorConductor.setLatLng([d.lat_conductor, d.lng_conductor]);
+                }
+            }
+
+            // Alerta de proximidad
             if (d.estado === "cerca" && !alertaFueraMostrada) {
                 const msgDiv = document.getElementById("mensaje-alerta");
-                if (msgDiv) {
-                    msgDiv.style.display = "block";
-                    document.getElementById("texto-alerta").innerText = "🚨 ¡Tu conductor está afuera!";
-                }
+                if (msgDiv) msgDiv.style.display = "block";
+                document.getElementById("texto-alerta").innerText = "🚨 ¡Tu conductor está afuera!";
                 alertaFueraMostrada = true;
             }
         }
+
+        // 4. SI FINALIZÓ
+        if (d.estado === "finalizado") {
+            alert("🏁 ¡Has llegado a tu destino!");
+            window.location.replace("{{ url_for('cliente') }}");
+        }
+    })
+    .catch(err => console.error("Error en vigilancia:", err))
+    .finally(() => {
+        ejecutando = false;
+    });
+}
 
         // 4. FINALIZADO
         if (d.estado === "finalizado") {
