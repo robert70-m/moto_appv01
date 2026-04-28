@@ -535,11 +535,10 @@ def api_viaje_cliente():
 
     conn = get_db()
     viaje = conn.execute("""
-    SELECT * FROM viajes
-    WHERE cliente_id=? 
-    AND estado NOT IN ('finalizado', 'cancelado')
-    ORDER BY id DESC LIMIT 1
-""", (user_id,)).fetchone()
+        SELECT * FROM viajes
+        WHERE cliente_id=? AND estado != 'finalizado'
+        ORDER BY id DESC LIMIT 1
+    """, (user_id,)).fetchone()
     conn.close()
 
     if viaje:

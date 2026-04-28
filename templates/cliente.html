@@ -204,24 +204,21 @@ document.addEventListener("DOMContentLoaded", function() {
     .then(d => {
         const panel = document.getElementById("status_conductor");
         const form = document.getElementById("form-viaje");
+
         if (d.estado === "finalizado" || d.estado === "cancelado") {
-    document.getElementById("status_conductor").style.display = "block";
-
-    document.getElementById("estado_titulo").innerText =
-        d.estado === "finalizado" ? "Viaje terminado 🏁" : "Viaje cancelado ❌";
-
-    document.getElementById("texto_estado").innerText = "Redirigiendo...";
-
-    // 🔥 DETENER LOOP (ESTO TE FALTABA)
-    clearInterval(intervaloViaje);
-
-    setTimeout(() => {
-        location.href = "/";
-    }, 2500);
-
-    return;
-}
-        
+            panel.style.display = "block";
+            document.getElementById("estado_titulo").innerText =
+                d.estado === "finalizado" ? "Viaje terminado 🏁" : "Viaje cancelado ❌";
+            document.getElementById("texto_estado").innerText = "¡Gracias por viajar! Redirigiendo...";
+            
+            // CORRECCIÓN AQUÍ: 
+            // En lugar de enviarlo a 'login', lo enviamos a la raíz '/' 
+            // para que pueda pedir otra moto de inmediato.
+            setTimeout(() => {
+                location.href = "/"; 
+            }, 3500);
+            return;
+        }
 
         if (["aceptado","en_camino","recogido","cerca"].includes(d.estado)) {
             panel.style.display = "block";
@@ -256,7 +253,8 @@ document.addEventListener("DOMContentLoaded", function() {
     
 
     // Loop cada 3 segundos si hay un viaje
-    let intervaloViaje = setInterval(window.vigilarViaje, 3000);
+    setInterval(window.vigilarViaje, 3000);
+});
 </script>
 
 {% endblock %}
