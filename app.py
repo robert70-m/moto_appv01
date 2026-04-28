@@ -312,15 +312,16 @@ def pedir_viaje():
     conn.commit()
     conn.close()
     return redirect(url_for("cliente"))
+
 @app.route("/cancelar_viaje/<int:viaje_id>", methods=['GET', 'POST'])
 def cancelar_viaje(viaje_id):
     conn = get_db()
     
-    # 🛡️ EL CANDADO: Primero revisamos en qué estado está el viaje
+    # 1. Buscamos el viaje para ver su estado actual
     viaje = conn.execute("SELECT estado FROM viajes WHERE id=?", (viaje_id,)).fetchone()
     
     if viaje:
-        # Solo dejamos cancelar si el viaje todavía nadie lo acepta ('pendiente')
+        # 🛡️ SOLO SI ESTÁ PENDIENTE: Permitimos cancelar
         if viaje['estado'] == 'pendiente':
             conn.execute(
                 "UPDATE viajes SET estado='cancelado' WHERE id=?", 
@@ -328,15 +329,27 @@ def cancelar_viaje(viaje_id):
             )
             conn.commit()
             conn.close()
+            
+            # 🔥 LA CLAVE PARA QUE NO SE QUEDE RECARGANDO:
+            # Borramos el viaje de la sesión del usuario
+            from flask import session
+            session.pop('viaje_id', None)
+            
+            # Redirigimos limpio a la página del cliente
             return redirect(url_for("cliente"))
+        
         else:
-            # ✋ Si ya está 'aceptado', 'en_camino' o 'recogido', NO lo dejamos
+            # ✋ SI YA FUE ACEPTADO: No hacemos nada en la DB
             conn.close()
-            # Lo regresamos al cliente con un aviso de que ya no se puede
+            # Regresamos con error, pero NO quitamos la sesión para que siga viendo a su chofer
             return redirect(url_for("cliente", error="No puedes cancelar, el conductor ya aceptó el viaje"))
     
+    # Si el viaje ni siquiera existe
     conn.close()
+    from flask import session
+    session.pop('viaje_id', None)
     return redirect(url_for("cliente"))
+
 # ---------------------- CONDUCTOR ----------------------
 @app.route("/estado_conductor")
 def estado_conductor():
