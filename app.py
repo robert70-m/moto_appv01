@@ -270,15 +270,15 @@ def cliente():
         return redirect(url_for("login"))
 
     conn = get_db()
+    # 🔍 CAMBIO AQUÍ: Ahora solo busca viajes activos (que no estén finalizados ni cancelados)
     viaje = conn.execute("""
         SELECT * FROM viajes
-        WHERE cliente_id=? AND estado != 'finalizado'
+        WHERE cliente_id=? AND estado NOT IN ('finalizado', 'cancelado')
         ORDER BY id DESC LIMIT 1
     """, (session["user_id"],)).fetchone()
     conn.close()
 
     return render_template("cliente.html", viaje_id=viaje["id"] if viaje else None)
-
 @app.route("/pedir_viaje", methods=["POST"])
 def pedir_viaje():
     if not rol("cliente"):
@@ -319,21 +319,22 @@ def pedir_viaje():
     conn.commit()
     conn.close()
     return redirect(url_for("cliente"))
-@app.route("/cancelar_viaje/<int:viaje_id>", methods=['GET', 'POST'])
+@app.route("/cancelar_viaje/<int:viaje_id>")
 def cancelar_viaje(viaje_id):
     conn = get_db()
-    # Verificamos rápido si el viaje existe y está pendiente
-    viaje = conn.execute("SELECT estado FROM viajes WHERE id=?", (viaje_id,)).fetchone()
-
-    if viaje and viaje["estado"] == "pendiente":
-        conn.execute("UPDATE viajes SET estado='cancelado' WHERE id=?", (viaje_id,))
-        conn.commit()
-    
+    # 1. Intentamos actualizar solo si está pendiente
+    conn.execute(
+        "UPDATE viajes SET estado='cancelado' WHERE id=? AND estado='pendiente'",
+        (viaje_id,)
+    )
+    conn.commit()
     conn.close()
-    
-    # Esta redirección es el "seguro" por si fallara el JS, 
-    # pero con el script que pusimos, la respuesta será casi instantánea.
-    return redirect(url_for("cliente"))
+
+    # 2. Esto es lo que evita que se quede recargando:
+    # Redirigimos al cliente pero con un número aleatorio al final (?v=...)
+    # para que el navegador no use "memoria vieja" y vea el cambio real.
+    import time
+    return redirect(url_for("cliente", v=int(time.time())))
 # ---------------------- CONDUCTOR ----------------------
 @app.route("/estado_conductor")
 def estado_conductor():
