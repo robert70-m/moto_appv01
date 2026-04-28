@@ -37,44 +37,19 @@
             PEDIR VIAJE AHORA 🚀
         </button>
     </form>
+
     {% if viaje_id %}
-<div id="contenedor-cancelar" style="margin-top: 10px;">
-    <button type="button" 
-            id="btn-cancelar"
-            onclick="ejecutarCancelacion('{{ viaje_id }}')" 
-            style="background:#e74c3c; color:white; padding:15px; border:none; border-radius:10px; width:100%; font-weight:bold; font-size:1rem; cursor:pointer;">
-        ❌ Cancelar Viaje
-    </button>
+    <div id="contenedor-cancelar" style="margin-top: 10px;">
+        <button type="button" 
+                id="btn-cancelar"
+                onclick="ejecutarCancelacion('{{ viaje_id }}')" 
+                style="background:#e74c3c; color:white; padding:15px; border:none; border-radius:10px; width:100%; font-weight:bold; font-size:1rem; cursor:pointer;">
+            ❌ Cancelar Viaje
+        </button>
+    </div>
+    {% endif %}
 </div>
 
-<script>
-function ejecutarCancelacion(viajeId) {
-    if (confirm('¿Seguro que deseas cancelar el viaje?')) {
-        const btn = document.getElementById('btn-cancelar');
-        
-        // 1. Bloqueo visual para evitar doble clic y recargas raras
-        btn.disabled = true;
-        btn.innerText = "Cancelando...";
-        btn.style.opacity = "0.5";
-
-        // 2. Enviamos la orden al servidor
-        fetch(`/cancelar_viaje/${viajeId}`)
-        .then(() => {
-            // 3. Cuando el servidor responde, forzamos la recarga limpia
-            // Agregamos un número aleatorio para que el navegador no use caché
-            window.location.href = "{{ url_for('cliente') }}?v=" + new Date().getTime();
-        })
-        .catch(err => {
-            console.error(err);
-            alert("Error de conexión");
-            btn.disabled = false;
-            btn.style.opacity = "1";
-            btn.innerText = "❌ Cancelar Viaje";
-        });
-    }
-}
-</script>
-{% endif %}
 <div id="status_conductor" style="display:none; padding:20px; background:#d4edda; border-radius:15px; margin:15px 0; border:2px solid #c3e6cb; box-shadow: 0 4px 10px rgba(0,0,0,0.1);">
     <h3 id="estado_titulo" style="text-align: center; margin-top: 0; color: #155724;">Esperando viaje...</h3>
     <hr style="border: 0; border-top: 1px solid #c3e6cb;">
@@ -91,52 +66,32 @@ function ejecutarCancelacion(viajeId) {
 </div>
 
 <style>
-    /* Estilos para inputs grandes y legibles */
-    .input-form {
-        padding: 15px; 
-        border-radius: 10px; 
-        border: 2px solid #eee; 
-        font-size: 16px; /* Evita zoom automático en iPhone */
-        background-color: #f9f9f9;
-        color: #333;
-    }
-
-    /* Botón pedir viaje gigante */
-    .btn-pedir {
-        background: var(--accent);
-        color: white;
-        padding: 20px;
-        border: none;
-        border-radius: 12px;
-        font-size: 1.2rem;
-        font-weight: bold;
-        cursor: pointer;
-        box-shadow: 0 4px 12px rgba(39, 174, 96, 0.3);
-        margin-top: 10px;
-    }
-
-    .btn-pedir:active {
-        transform: scale(0.98);
-    }
-
-    .alerta {
-        position: fixed;
-        top: 80px;
-        left: 50%;
-        transform: translateX(-50%);
-        background: #27ae60;
-        color: #fff;
-        padding: 15px 25px;
-        border-radius: 30px;
-        z-index: 9999;
-        font-weight: bold;
-        box-shadow: 0 4px 15px rgba(0,0,0,0.2);
-    }
+    .input-form { padding: 15px; border-radius: 10px; border: 2px solid #eee; font-size: 16px; background-color: #f9f9f9; color: #333; }
+    .btn-pedir { background: var(--accent); color: white; padding: 20px; border: none; border-radius: 12px; font-size: 1.2rem; font-weight: bold; cursor: pointer; box-shadow: 0 4px 12px rgba(39, 174, 96, 0.3); margin-top: 10px; }
+    .alerta { position: fixed; top: 80px; left: 50%; transform: translateX(-50%); background: #27ae60; color: #fff; padding: 15px 25px; border-radius: 30px; z-index: 9999; font-weight: bold; box-shadow: 0 4px 15px rgba(0,0,0,0.2); }
 </style>
 
 <script>
-document.addEventListener("DOMContentLoaded", function() {
+// --- TU FUNCIÓN DE CANCELACIÓN (MEJORADA) ---
+function ejecutarCancelacion(viajeId) {
+    if (confirm('¿Seguro que deseas cancelar el viaje?')) {
+        const btn = document.getElementById('btn-cancelar');
+        btn.disabled = true;
+        btn.innerText = "Cancelando...";
+        
+        fetch(`/cancelar_viaje/${viajeId}`)
+        .then(() => {
+            window.location.href = "{{ url_for('cliente') }}?v=" + new Date().getTime();
+        })
+        .catch(err => {
+            alert("Error de conexión");
+            btn.disabled = false;
+            btn.innerText = "❌ Cancelar Viaje";
+        });
+    }
+}
 
+document.addEventListener("DOMContentLoaded", function() {
     let map = null;
     let marcadorUsuario = null;
     let marcadorDestino = null;
@@ -144,142 +99,93 @@ document.addEventListener("DOMContentLoaded", function() {
     let alertaMostrada = false;
     let ejecutando = false;
 
-    // ICONOS PERSONALIZADOS
-    const iconoCliente = L.icon({
-        iconUrl: 'https://cdn-icons-png.flaticon.com/512/684/684908.png',
-        iconSize: [35,35], iconAnchor: [17, 35]
-    });
-
-    const iconoDestino = L.icon({
-        iconUrl: 'https://cdn-icons-png.flaticon.com/512/447/447031.png',
-        iconSize: [35,35], iconAnchor: [17, 35]
-    });
-
-    function alertaCerca() {
-        const divAlerta = document.getElementById("mensaje-alerta");
-        document.getElementById("texto-alerta").innerText = "🚨 ¡Tu conductor está muy cerca!";
-        divAlerta.style.display = "block";
-        setTimeout(() => divAlerta.style.display = "none", 5000);
-    }
+    // ICONOS ORIGINALES
+    const iconoCliente = L.icon({ iconUrl: 'https://cdn-icons-png.flaticon.com/512/684/684908.png', iconSize: [35,35], iconAnchor: [17, 35] });
+    const iconoDestino = L.icon({ iconUrl: 'https://cdn-icons-png.flaticon.com/512/447/447031.png', iconSize: [35,35], iconAnchor: [17, 35] });
 
     function initMap(lat, lng) {
         if (map) return;
-
         map = L.map('map').setView([lat, lng], 16);
-
-        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-            attribution: '© OpenStreetMap'
-        }).addTo(map);
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
 
         map.on('click', function(e) {
+            // No permitir cambiar destino si ya hay un conductor asignado
+            if (document.getElementById("status_conductor").style.display === "block") return;
+
             let latD = e.latlng.lat;
             let lngD = e.latlng.lng;
-
             document.getElementById("lat_destino").value = latD;
             document.getElementById("lng_destino").value = lngD;
-            document.getElementById("input_destino").value = "Destino marcado en mapa ✅";
+            document.getElementById("input_destino").value = "Destino marcado ✅";
 
-            if (marcadorDestino) {
-                marcadorDestino.setLatLng([latD, lngD]);
-            } else {
-                marcadorDestino = L.marker([latD, lngD], {icon: iconoDestino}).addTo(map);
-            }
+            if (marcadorDestino) { marcadorDestino.setLatLng([latD, lngD]); } 
+            else { marcadorDestino = L.marker([latD, lngD], {icon: iconoDestino}).addTo(map); }
         });
-        
-        // Corregir tamaño del mapa por si acaso
-        setTimeout(() => map.invalidateSize(), 500);
     }
 
+    // GEOLOCALIZACIÓN (TU LÓGICA)
     if (navigator.geolocation) {
         navigator.geolocation.watchPosition(function(pos) {
             let lat = pos.coords.latitude;
             let lng = pos.coords.longitude;
-
             document.getElementById("lat").value = lat;
             document.getElementById("lng").value = lng;
             document.getElementById("input_origen").value = "Ubicación detectada ✅";
 
             if (!map) initMap(lat, lng);
+            if (marcadorUsuario) { marcadorUsuario.setLatLng([lat, lng]); } 
+            else { marcadorUsuario = L.marker([lat, lng], {icon: iconoCliente}).addTo(map); }
 
-            if (marcadorUsuario) {
-                marcadorUsuario.setLatLng([lat, lng]);
-            } else {
-                marcadorUsuario = L.marker([lat, lng], {icon: iconoCliente}).addTo(map);
-            }
-
-            if (primeraVez) {
-                map.setView([lat, lng], 16);
-                primeraVez = false;
-            }
-        }, (err) => console.log("Error GPS:", err), { enableHighAccuracy: true });
+            if (primeraVez) { map.setView([lat, lng], 16); primeraVez = false; }
+        }, null, { enableHighAccuracy: true });
     }
+
+    // VIGILANTE (TU LÓGICA CON EL ARREGLO DEL BOTÓN)
     window.vigilarViaje = function() {
-    const viajeId = "{{ viaje_id }}";
+        const viajeId = "{{ viaje_id }}";
+        if (!viajeId || viajeId === "None" || viajeId === "") return;
+        if (ejecutando) return;
+        ejecutando = true;
 
-    if (!viajeId || viajeId === "None" || viajeId === "") {
-        document.getElementById("status_conductor").style.display = "none";
-        return;
+        fetch(`/api_estado_viaje/${viajeId}`)
+        .then(r => r.json())
+        .then(d => {
+            const panel = document.getElementById("status_conductor");
+            const form = document.getElementById("form-viaje");
+            const btnCanc = document.getElementById("contenedor-cancelar");
+
+            if (d.estado === "finalizado" || d.estado === "cancelado") {
+                panel.style.display = "block";
+                document.getElementById("estado_titulo").innerText = d.estado === "finalizado" ? "Viaje terminado 🏁" : "Viaje cancelado ❌";
+                setTimeout(() => { location.href = "/"; }, 3500);
+                return;
+            }
+
+            if (["aceptado","en_camino","recogido","cerca"].includes(d.estado)) {
+                panel.style.display = "block";
+                if(form) form.style.display = "none";
+                
+                // 🛡️ AQUÍ ESTÁ EL ARREGLO: Si ya aceptaste, el botón de cancelar se borra.
+                if (btnCanc) btnCanc.style.display = "none";
+
+                document.getElementById("nombre_en_pantalla").innerText = d.conductor || "Asignando...";
+                document.getElementById("unidad_en_pantalla").innerText = d.unidad || "...";
+                document.getElementById("color_en_pantalla").innerText = d.color || "...";
+
+                const textos = { aceptado: "Moto asignada", en_camino: "En camino 🛵", recogido: "En viaje 🚀", cerca: "¡Ya llegó! 🚨" };
+                document.getElementById("texto_estado").innerText = textos[d.estado] || d.estado;
+
+                if (d.estado === "cerca" && !alertaMostrada) {
+                    document.getElementById("mensaje-alerta").style.display = "block";
+                    document.getElementById("texto-alerta").innerText = "🚨 ¡Tu conductor está afuera!";
+                    alertaMostrada = true;
+                }
+            }
+        })
+        .finally(() => ejecutando = false);
     }
 
-    if (ejecutando) return;
-    ejecutando = true;
-
-    fetch(`/api_estado_viaje/${viajeId}`)
-    .then(r => r.json())
-    .then(d => {
-        const panel = document.getElementById("status_conductor");
-        const form = document.getElementById("form-viaje");
-
-        if (d.estado === "finalizado" || d.estado === "cancelado") {
-            panel.style.display = "block";
-            document.getElementById("estado_titulo").innerText =
-                d.estado === "finalizado" ? "Viaje terminado 🏁" : "Viaje cancelado ❌";
-            document.getElementById("texto_estado").innerText = "¡Gracias por viajar! Redirigiendo...";
-            
-            // CORRECCIÓN AQUÍ: 
-            // En lugar de enviarlo a 'login', lo enviamos a la raíz '/' 
-            // para que pueda pedir otra moto de inmediato.
-            setTimeout(() => {
-                location.href = "/"; 
-            }, 3500);
-            return;
-        }
-
-        if (["aceptado","en_camino","recogido","cerca"].includes(d.estado)) {
-            panel.style.display = "block";
-            if(form) form.style.display = "none";
-            
-            const btnCanc = document.getElementById("contenedor-cancelar");
-            if (btnCanc) btnCanc.style.display = "none";
-
-            document.getElementById("nombre_en_pantalla").innerText = d.conductor || "Asignando...";
-            document.getElementById("unidad_en_pantalla").innerText = d.unidad || "...";
-            document.getElementById("color_en_pantalla").innerText = d.color || "...";
-
-            const estados = {
-                aceptado: "Conductor asignado",
-                en_camino: "Va hacia ti 🛵",
-                recogido: "En viaje 🚀",
-                cerca: "Está afuera 🚨"
-            };
-
-            document.getElementById("estado_titulo").innerText = "Detalles del Conductor";
-            document.getElementById("texto_estado").innerText = estados[d.estado] || d.estado;
-
-            if (d.estado === "cerca" && !alertaMostrada) {
-                alertaCerca();
-                alertaMostrada = true;
-            }
-        }
-    })
-    .catch(e => console.log("Error API:", e))
-    .finally(() => ejecutando = false);
-}
-    
-
-    // Loop cada 3 segundos si hay un viaje
     setInterval(window.vigilarViaje, 3000);
 });
 </script>
-
 {% endblock %}
