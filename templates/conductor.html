@@ -180,37 +180,54 @@ document.addEventListener("DOMContentLoaded", function() {
 {% endif %}
 
 // --- TU LÓGICA DE ALERTAS (CORREGIDA Y ACTIVADA) ---
+<script>
 let alertaActiva = false;
 
 function iniciarAlerta() {
-    if (alertaActiva) return;
-    alertaActiva = true;
-    document.getElementById("alerta-viaje").style.display = "block";
+    const divAlerta = document.getElementById("alerta-viaje");
     const sonido = document.getElementById("sonidoNotificacion");
-    if(sonido) {
-        sonido.play().catch(e => console.log("Audio bloqueado por navegador"));
+    
+    if (!alertaActiva) {
+        alertaActiva = true;
+        if (divAlerta) divAlerta.style.display = "block";
+        if (sonido) {
+            sonido.loop = true; // 🔄 Para que siga sonando hasta que lo atiendan
+            sonido.play().catch(e => console.log("Esperando clic para sonar"));
+        }
     }
 }
 
 function detenerAlerta() {
-    alertaActiva = false;
-    document.getElementById("alerta-viaje").style.display = "none";
+    const divAlerta = document.getElementById("alerta-viaje");
+    const sonido = document.getElementById("sonidoNotificacion"); // 👈 Necesitamos llamar al sonido aquí también
+    
+    if (alertaActiva) {
+        alertaActiva = false;
+        if (divAlerta) divAlerta.style.display = "none";
+        
+        if (sonido) {
+            sonido.pause();      // 🔇 DETIENE EL SONIDO
+            sonido.currentTime = 0; // REINICIA EL AUDIO
+        }
+    }
 }
 
-// 🕵️ VIGILANTE: Revisa viajes cada 10 segundos
+// 🕵️ VIGILANTE: Revisa cada 5 segundos (más rápido para mayor precisión)
 setInterval(function() {
-    // Si NO tiene un viaje activo, buscamos nuevos
-    {% if not viaje %}
-    fetch('/api/verificar_viajes') // Asegúrate de tener esta ruta en app.py
+    {% if not viaje_activo %}
+    fetch('/api/verificar_viajes')
     .then(res => res.json())
     .then(data => {
         if (data.hay_viajes) {
             iniciarAlerta();
+        } else {
+            // 🧹 Si ya no hay viajes (porque alguien más lo tomó o se canceló)
+            // quitamos la notificación automáticamente
+            detenerAlerta();
         }
     })
-    .catch(e => console.log("Error buscando viajes"));
+    .catch(err => console.log("Error al verificar"));
     {% endif %}
-}, 10000);
+}, 5000); 
 </script>
-
 {% endblock %}
