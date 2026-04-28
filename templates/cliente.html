@@ -72,7 +72,8 @@
 </style>
 
 <script>
-// --- TU FUNCIÓN DE CANCELACIÓN (MEJORADA) ---
+let alertaTomadaMostrada = false; // Candado para el mensaje de "Aceptado"
+
 function ejecutarCancelacion(viajeId) {
     if (confirm('¿Seguro que deseas cancelar el viaje?')) {
         const btn = document.getElementById('btn-cancelar');
@@ -81,7 +82,8 @@ function ejecutarCancelacion(viajeId) {
         
         fetch(`/cancelar_viaje/${viajeId}`)
         .then(() => {
-            window.location.href = "{{ url_for('cliente') }}?v=" + new Date().getTime();
+            // Redirección limpia al cliente
+            window.location.replace("{{ url_for('cliente') }}");
         })
         .catch(err => {
             alert("Error de conexión");
@@ -96,10 +98,9 @@ document.addEventListener("DOMContentLoaded", function() {
     let marcadorUsuario = null;
     let marcadorDestino = null;
     let primeraVez = true;
-    let alertaMostrada = false;
+    let alertaFueraMostrada = false;
     let ejecutando = false;
 
-    // ICONOS ORIGINALES
     const iconoCliente = L.icon({ iconUrl: 'https://cdn-icons-png.flaticon.com/512/684/684908.png', iconSize: [35,35], iconAnchor: [17, 35] });
     const iconoDestino = L.icon({ iconUrl: 'https://cdn-icons-png.flaticon.com/512/447/447031.png', iconSize: [35,35], iconAnchor: [17, 35] });
 
@@ -109,21 +110,17 @@ document.addEventListener("DOMContentLoaded", function() {
         L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
 
         map.on('click', function(e) {
-            // No permitir cambiar destino si ya hay un conductor asignado
             if (document.getElementById("status_conductor").style.display === "block") return;
-
             let latD = e.latlng.lat;
             let lngD = e.latlng.lng;
             document.getElementById("lat_destino").value = latD;
             document.getElementById("lng_destino").value = lngD;
             document.getElementById("input_destino").value = "Destino marcado ✅";
-
             if (marcadorDestino) { marcadorDestino.setLatLng([latD, lngD]); } 
             else { marcadorDestino = L.marker([latD, lngD], {icon: iconoDestino}).addTo(map); }
         });
     }
 
-    // GEOLOCALIZACIÓN (TU LÓGICA)
     if (navigator.geolocation) {
         navigator.geolocation.watchPosition(function(pos) {
             let lat = pos.coords.latitude;
@@ -131,16 +128,13 @@ document.addEventListener("DOMContentLoaded", function() {
             document.getElementById("lat").value = lat;
             document.getElementById("lng").value = lng;
             document.getElementById("input_origen").value = "Ubicación detectada ✅";
-
             if (!map) initMap(lat, lng);
             if (marcadorUsuario) { marcadorUsuario.setLatLng([lat, lng]); } 
             else { marcadorUsuario = L.marker([lat, lng], {icon: iconoCliente}).addTo(map); }
-
             if (primeraVez) { map.setView([lat, lng], 16); primeraVez = false; }
         }, null, { enableHighAccuracy: true });
     }
 
-    // VIGILANTE (TU LÓGICA CON EL ARREGLO DEL BOTÓN)
     window.vigilarViaje = function() {
         const viajeId = "{{ viaje_id }}";
         if (!viajeId || viajeId === "None" || viajeId === "") return;
@@ -154,18 +148,22 @@ document.addEventListener("DOMContentLoaded", function() {
             const form = document.getElementById("form-viaje");
             const btnCanc = document.getElementById("contenedor-cancelar");
 
-            if (d.estado === "finalizado" || d.estado === "cancelado") {
-                panel.style.display = "block";
-                document.getElementById("estado_titulo").innerText = d.estado === "finalizado" ? "Viaje terminado 🏁" : "Viaje cancelado ❌";
-                setTimeout(() => { location.href = "/"; }, 3500);
+            // 📢 NOTIFICACIÓN VISIBLE: Si el viaje se cancela o no existe
+            if (d.estado === "cancelado" || d.estado === "no_existe") {
+                alert("📢 El viaje ha sido cancelado o ya no está disponible.");
+                window.location.replace("{{ url_for('cliente') }}");
                 return;
             }
 
             if (["aceptado","en_camino","recogido","cerca"].includes(d.estado)) {
+                // ✅ NOTIFICACIÓN VISIBLE: Cuando el conductor acepta por primera vez
+                if (panel.style.display === "none" && !alertaTomadaMostrada) {
+                    alert("✅ ¡Un conductor ha tomado tu viaje! Ya va en camino.");
+                    alertaTomadaMostrada = true;
+                }
+
                 panel.style.display = "block";
                 if(form) form.style.display = "none";
-                
-                // 🛡️ AQUÍ ESTÁ EL ARREGLO: Si ya aceptaste, el botón de cancelar se borra.
                 if (btnCanc) btnCanc.style.display = "none";
 
                 document.getElementById("nombre_en_pantalla").innerText = d.conductor || "Asignando...";
@@ -175,11 +173,16 @@ document.addEventListener("DOMContentLoaded", function() {
                 const textos = { aceptado: "Moto asignada", en_camino: "En camino 🛵", recogido: "En viaje 🚀", cerca: "¡Ya llegó! 🚨" };
                 document.getElementById("texto_estado").innerText = textos[d.estado] || d.estado;
 
-                if (d.estado === "cerca" && !alertaMostrada) {
+                if (d.estado === "cerca" && !alertaFueraMostrada) {
                     document.getElementById("mensaje-alerta").style.display = "block";
                     document.getElementById("texto-alerta").innerText = "🚨 ¡Tu conductor está afuera!";
-                    alertaMostrada = true;
+                    alertaFueraMostrada = true;
                 }
+            }
+
+            if (d.estado === "finalizado") {
+                alert("🏁 ¡Has llegado a tu destino! Gracias por viajar.");
+                window.location.replace("{{ url_for('cliente') }}");
             }
         })
         .finally(() => ejecutando = false);

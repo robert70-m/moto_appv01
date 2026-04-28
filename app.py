@@ -812,7 +812,8 @@ def add_header(response):
     response.headers["Cache-Control"] = "no-store, no-cache, must-revalidate"
 
     return response
-from flask import jsonify
+from flask import session, jsonify
+
 @app.route("/api_estado_viaje/<int:viaje_id>")
 def api_estado_viaje(viaje_id):
     conn = get_db()
@@ -830,15 +831,23 @@ def api_estado_viaje(viaje_id):
 
     conn.close()
 
+    # --- CORRECCIÓN AQUÍ ---
     if not viaje:
-        return jsonify({"estado": "cancelado"})
+        # Si el viaje ya no está en la DB, borramos rastro de la sesión
+        session.pop('viaje_id', None)
+        return jsonify({"estado": "no_existe"})
+
+    # Si el viaje está cancelado o finalizado, también limpiamos sesión
+    if viaje["estado"] in ["cancelado", "finalizado"]:
+        session.pop('viaje_id', None)
 
     return jsonify({
         "estado": viaje["estado"],
-        "conductor": viaje["nombre"] or "",
-        "unidad": viaje["numero_unidad"] or "",
-        "color": viaje["color_vehiculo"] or ""
+        "conductor": viaje["nombre"] or "Asignando...",
+        "unidad": viaje["numero_unidad"] or "...",
+        "color": viaje["color_vehiculo"] or "..."
     })
+
 def conductor_activo(user_id):
     conn = get_db()
     user = conn.execute(
@@ -847,7 +856,6 @@ def conductor_activo(user_id):
     ).fetchone()
     conn.close()
     return user and user["activo"] == 1
-
 @app.route("/api/verificar_viajes")
 def api_verificar_viajes():
     user_id = session.get("user_id")

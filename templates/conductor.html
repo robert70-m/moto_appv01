@@ -58,48 +58,13 @@
 </div>
 
 <style>
-    .btn-estado {
-        width: 100%;
-        padding: 18px;
-        border: none;
-        color: white;
-        border-radius: 12px;
-        font-weight: bold;
-        font-size: 1.2rem;
-        cursor: pointer;
-        transition: transform 0.1s;
-        box-shadow: 0 4px 10px rgba(0,0,0,0.15);
-    }
-    
-    .btn-estado:active {
-        transform: scale(0.98);
-    }
-
-    .btn-estado:disabled {
-        background: #bdc3c7 !important;
-        box-shadow: none;
-        cursor: not-allowed;
-        opacity: 0.6;
-    }
-
-    .alerta-viaje {
-        position: fixed;
-        top: 0;
-        left: 0;
-        width: 100%;
-        background: #e74c3c;
-        color: white;
-        text-align: center;
-        padding: 25px;
-        font-weight: bold;
-        font-size: 1.3rem;
-        z-index: 9999;
-        box-shadow: 0 5px 15px rgba(0,0,0,0.3);
-    }
+    .btn-estado { width: 100%; padding: 18px; border: none; color: white; border-radius: 12px; font-weight: bold; font-size: 1.2rem; cursor: pointer; transition: transform 0.1s; box-shadow: 0 4px 10px rgba(0,0,0,0.15); }
+    .btn-estado:active { transform: scale(0.98); }
+    .btn-estado:disabled { background: #bdc3c7 !important; box-shadow: none; cursor: not-allowed; opacity: 0.6; }
+    .alerta-viaje { position: fixed; top: 0; left: 0; width: 100%; background: #e74c3c; color: white; text-align: center; padding: 25px; font-weight: bold; font-size: 1.3rem; z-index: 9999; box-shadow: 0 5px 15px rgba(0,0,0,0.3); }
 </style>
 
 <script>
-// --- LÓGICA DE ESTADOS ---
 function actualizarEstado(nuevoEstado, viajeId) {
     if (!viajeId || viajeId === "") return;
     const btn = event.currentTarget;
@@ -111,7 +76,8 @@ function actualizarEstado(nuevoEstado, viajeId) {
     .then(txt => {
         if (txt.includes("OK")) {
             if (nuevoEstado === "finalizado") {
-                window.location.href = "/viajes_disponibles";
+                // Redirección limpia al terminar
+                window.location.replace("/viajes_disponibles");
             } else {
                 location.reload();
             }
@@ -123,7 +89,6 @@ function actualizarEstado(nuevoEstado, viajeId) {
     });
 }
 
-// --- LÓGICA DE MAPA ---
 {% if viaje %}
 let map;
 document.addEventListener("DOMContentLoaded", function() {
@@ -156,7 +121,6 @@ document.addEventListener("DOMContentLoaded", function() {
 });
 {% endif %}
 
-// --- LÓGICA DE ALERTAS Y CANCELACIÓN ---
 let alertaActiva = false;
 
 function iniciarAlerta() {
@@ -179,10 +143,9 @@ function detenerAlerta() {
     }
 }
 
-// VIGILANTE MEJORADO
+// VIGILANTE FINAL DEL CONDUCTOR
 setInterval(function() {
     {% if not viaje %}
-        // MODO BÚSQUEDA
         fetch('/api/verificar_viajes')
         .then(res => res.json())
         .then(data => {
@@ -190,19 +153,19 @@ setInterval(function() {
             else { detenerAlerta(); }
         });
     {% else %}
-        // MODO VIAJE ACTIVO (REVISA CANCELACIÓN)
+        // Si hay un viaje activo, vigilamos si el cliente lo cancela
         fetch('/api_estado_viaje/{{ viaje.id }}')
         .then(res => res.json())
         .then(data => {
-            if (data.estado === 'cancelado') {
-                // Forzar limpieza visual antes del alert
-                document.getElementById('map_conductor').style.display = 'none';
-                document.getElementById('botones-control').style.display = 'none';
-                alert("⚠️ EL CLIENTE CANCELÓ EL VIAJE");
+            // Si el estado es cancelado o no existe (borrado de DB)
+            if (data.estado === 'cancelado' || data.estado === 'no_existe') {
+                // Notificación VISIBLE para el conductor
+                alert("🚨 ¡ATENCIÓN! EL CLIENTE CANCELÓ EL VIAJE.");
+                // Limpieza total y redirección
                 window.location.replace("/viajes_disponibles");
             }
         });
     {% endif %}
-}, 4000); // 4 segundos para ser un poco más rápido que el anterior
+}, 4000); 
 </script>
 {% endblock %}
