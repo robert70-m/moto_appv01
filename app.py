@@ -312,43 +312,25 @@ def pedir_viaje():
     conn.commit()
     conn.close()
     return redirect(url_for("cliente"))
-
 @app.route("/cancelar_viaje/<int:viaje_id>", methods=['GET', 'POST'])
 def cancelar_viaje(viaje_id):
     conn = get_db()
-    
-    # 1. Buscamos el viaje para ver su estado actual
     viaje = conn.execute("SELECT estado FROM viajes WHERE id=?", (viaje_id,)).fetchone()
     
-    if viaje:
-        # 🛡️ SOLO SI ESTÁ PENDIENTE: Permitimos cancelar
-        if viaje['estado'] == 'pendiente':
-            conn.execute(
-                "UPDATE viajes SET estado='cancelado' WHERE id=?", 
-                (viaje_id,)
-            )
-            conn.commit()
-            conn.close()
-            
-            # 🔥 LA CLAVE PARA QUE NO SE QUEDE RECARGANDO:
-            # Borramos el viaje de la sesión del usuario
-            from flask import session
-            session.pop('viaje_id', None)
-            
-            # Redirigimos limpio a la página del cliente
-            return redirect(url_for("cliente"))
+    if viaje and viaje['estado'] == 'pendiente':
+        conn.execute("UPDATE viajes SET estado='cancelado' WHERE id=?", (viaje_id,))
+        conn.commit()
         
-        else:
-            # ✋ SI YA FUE ACEPTADO: No hacemos nada en la DB
-            conn.close()
-            # Regresamos con error, pero NO quitamos la sesión para que siga viendo a su chofer
-            return redirect(url_for("cliente", error="No puedes cancelar, el conductor ya aceptó el viaje"))
+        # --- ESTO ES LO QUE DEBES ASEGURAR QUE ESTÉ ---
+        from flask import session
+        session.pop('viaje_id', None) # Borra el viaje de la memoria del cliente
+        # ----------------------------------------------
+        
+        conn.close()
+        return redirect(url_for("cliente"))
     
-    # Si el viaje ni siquiera existe
     conn.close()
-    from flask import session
-    session.pop('viaje_id', None)
-    return redirect(url_for("cliente"))
+    return redirect(url_for("cliente", error="No se pudo cancelar o ya fue aceptado"))
 
 # ---------------------- CONDUCTOR ----------------------
 @app.route("/estado_conductor")

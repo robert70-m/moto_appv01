@@ -20,55 +20,57 @@
 </div>
 
 <div id="alerta-viaje" class="alerta-viaje" style="display:none;" onclick="detenerAlerta()">
-    🚨 NUEVO VIAJE DISPONIBLE 🚨
+    🚨 NUEVO VIAJE DISPONIBLE 🚨 (Toca para silenciar)
 </div>
 
 <div id="contenedor-viaje-activo" class="card" style="padding: 10px; margin-bottom: 20px;">
     <h3 style="text-align: center; margin-top: 5px;">Control de Viaje Activo</h3>
 
     {% if viaje %}
-    <div id="map_conductor" style="height:50vh; width: 100%; border-radius: 10px; margin-bottom: 15px; border: 1px solid #ddd;"></div>
+    <div id="map_conductor" style="height:50vh; width: 100%; border-radius: 10px; margin-bottom: 15px; border: 1px solid #ddd; z-index: 1;"></div>
     {% else %}
     <div id="sin-viaje-msg" style="text-align:center; padding:50px; background: #f9f9f9; border-radius: 10px; color: #95a5a6; font-style: italic;">
-        No hay viaje activo en este momento
+        No hay viaje activo en este momento. Ve a "Ver viajes disponibles" para empezar.
     </div>
     {% endif %}
 
-    <div id="botones-control" style="display:flex; flex-direction:column; gap:12px; position: relative; z-index: 2500; {% if not viaje %}display:none;{% endif %}">
+    <div id="botones-control" style="display:flex; flex-direction:column; gap:12px; {% if not viaje %}display:none;{% endif %}">
 
-        <button class="btn-estado" onclick="actualizarEstado('en_camino','{{ viaje.id if viaje else '' }}')"
+        <button class="btn-estado" id="btn-en-camino" onclick="actualizarEstado('en_camino','{{ viaje.id if viaje else '' }}')"
         {% if not viaje or viaje.estado != 'aceptado' %} disabled {% endif %}
         style="background: #f39c12;">
-            1. En Camino 🛵
+            1. En Camino al Cliente 🛵
         </button>
 
-        <button class="btn-estado" onclick="actualizarEstado('recogido','{{ viaje.id if viaje else '' }}')"
+        <button class="btn-estado" id="btn-recogido" onclick="actualizarEstado('recogido','{{ viaje.id if viaje else '' }}')"
         {% if not viaje or (viaje.estado != 'en_camino' and viaje.estado != 'aceptado') %} disabled {% endif %}
         style="background: #2980b9;">
-            2. Ya lo recogí ✅
+            2. Cliente a Bordo ✅
         </button>
 
-        <button class="btn-estado" onclick="actualizarEstado('finalizado','{{ viaje.id if viaje else '' }}')"
+        <button class="btn-estado" id="btn-finalizado" onclick="actualizarEstado('finalizado','{{ viaje.id if viaje else '' }}')"
         {% if not viaje or (viaje.estado != 'recogido' and viaje.estado != 'en_camino') %} disabled {% endif %}
         style="background: #27ae60;">
-            3. Finalizar Viaje 🏁
+            3. Finalizar y Cobrar 🏁
         </button>
-
     </div>
 </div>
 
 <style>
-    .btn-estado { width: 100%; padding: 18px; border: none; color: white; border-radius: 12px; font-weight: bold; font-size: 1.2rem; cursor: pointer; transition: transform 0.1s; box-shadow: 0 4px 10px rgba(0,0,0,0.15); }
-    .btn-estado:active { transform: scale(0.98); }
-    .btn-estado:disabled { background: #bdc3c7 !important; box-shadow: none; cursor: not-allowed; opacity: 0.6; }
-    .alerta-viaje { position: fixed; top: 0; left: 0; width: 100%; background: #e74c3c; color: white; text-align: center; padding: 25px; font-weight: bold; font-size: 1.3rem; z-index: 9999; box-shadow: 0 5px 15px rgba(0,0,0,0.3); }
+    .btn-estado { width: 100%; padding: 18px; border: none; color: white; border-radius: 12px; font-weight: bold; font-size: 1.2rem; cursor: pointer; transition: background 0.3s; box-shadow: 0 4px 10px rgba(0,0,0,0.15); }
+    .btn-estado:disabled { background: #bdc3c7 !important; cursor: not-allowed; opacity: 0.6; box-shadow: none; }
+    .alerta-viaje { position: fixed; top: 0; left: 0; width: 100%; background: #e74c3c; color: white; text-align: center; padding: 25px; font-weight: bold; font-size: 1.3rem; z-index: 9999; box-shadow: 0 5px 15px rgba(0,0,0,0.3); animation: pulse 1s infinite; }
+    @keyframes pulse { 0% { opacity: 1; } 50% { opacity: 0.7; } 100% { opacity: 1; } }
 </style>
 
 <script>
+// Función para cambiar los estados del viaje (API)
 function actualizarEstado(nuevoEstado, viajeId) {
     if (!viajeId || viajeId === "") return;
+    
     const btn = event.currentTarget;
-    btn.innerHTML = "Procesando...";
+    const textoOriginal = btn.innerHTML;
+    btn.innerHTML = "Actualizando...";
     btn.disabled = true;
 
     fetch(`/cambiar_estado_viaje/${viajeId}/${nuevoEstado}`)
@@ -76,19 +78,23 @@ function actualizarEstado(nuevoEstado, viajeId) {
     .then(txt => {
         if (txt.includes("OK")) {
             if (nuevoEstado === "finalizado") {
-                // Redirección limpia al terminar
                 window.location.replace("/viajes_disponibles");
             } else {
                 location.reload();
             }
+        } else {
+            alert("Error al actualizar estado");
+            btn.innerHTML = textoOriginal;
+            btn.disabled = false;
         }
     })
     .catch(err => {
-        alert("Error de conexión");
+        alert("Error de conexión con el servidor");
         location.reload();
     });
 }
 
+// Inicialización del Mapa del Conductor
 {% if viaje %}
 let map;
 document.addEventListener("DOMContentLoaded", function() {
@@ -104,23 +110,27 @@ document.addEventListener("DOMContentLoaded", function() {
         const iconVerde = L.icon({ iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-green.png', iconSize: [25, 41], iconAnchor: [12, 41] });
         const iconRojo = L.icon({ iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-red.png', iconSize: [25, 41], iconAnchor: [12, 41] });
 
-        L.marker([latO, lngO], {icon: iconVerde}).addTo(map);
-        L.marker([latD, lngD], {icon: iconRojo}).addTo(map);
+        L.marker([latO, lngO], {icon: iconVerde}).addTo(map).bindPopup("Punto de Recogida");
+        L.marker([latD, lngD], {icon: iconRojo}).addTo(map).bindPopup("Destino Final");
 
+        // Dibujar la ruta sugerida
         fetch(`https://router.project-osrm.org/route/v1/driving/${lngO},${latO};${lngD},${latD}?overview=full&geometries=geojson`)
         .then(res => res.json())
         .then(data => {
             if (data.routes && data.routes.length > 0) {
                 const ruta = data.routes[0].geometry.coordinates.map(c => [c[1], c[0]]);
-                const linea = L.polyline(ruta, { color: '#2980b9', weight: 6 }).addTo(map);
-                map.fitBounds(linea.getBounds(), {padding:[30,30]});
+                const linea = L.polyline(ruta, { color: '#2980b9', weight: 6, opacity: 0.7 }).addTo(map);
+                map.fitBounds(linea.getBounds(), {padding:[40,40]});
             }
         });
-        setTimeout(() => map.invalidateSize(), 500);
+        
+        // Corregir tamaño del mapa tras carga inicial
+        setTimeout(() => { map.invalidateSize(); }, 800);
     }
 });
 {% endif %}
 
+// Lógica de Alertas y Vigilante
 let alertaActiva = false;
 
 function iniciarAlerta() {
@@ -129,7 +139,10 @@ function iniciarAlerta() {
     if (!alertaActiva) {
         alertaActiva = true;
         if (divAlerta) divAlerta.style.display = "block";
-        if (sonido) { sonido.loop = true; sonido.play().catch(()=>{}); }
+        if (sonido) { 
+            sonido.loop = true; 
+            sonido.play().catch(() => { console.log("Interacción requerida para audio"); }); 
+        }
     }
 }
 
@@ -143,29 +156,28 @@ function detenerAlerta() {
     }
 }
 
-// VIGILANTE FINAL DEL CONDUCTOR
+// Vigilante de cancelaciones y nuevos viajes
 setInterval(function() {
-    {% if not viaje %}
+    {% if viaje %}
+        // Revisar si el viaje actual sigue activo
+        fetch('/api_estado_viaje/{{ viaje.id }}')
+        .then(res => res.json())
+        .then(data => {
+            if (data.estado === 'cancelado' || data.estado === 'no_existe') {
+                alert("🚨 ¡ATENCIÓN! EL CLIENTE CANCELÓ EL VIAJE.");
+                window.location.replace("/viajes_disponibles");
+            }
+        });
+    {% else %}
+        // Si está libre, buscar nuevos pedidos
         fetch('/api/verificar_viajes')
         .then(res => res.json())
         .then(data => {
             if (data.hay_viajes) { iniciarAlerta(); }
             else { detenerAlerta(); }
-        });
-    {% else %}
-        // Si hay un viaje activo, vigilamos si el cliente lo cancela
-        fetch('/api_estado_viaje/{{ viaje.id }}')
-        .then(res => res.json())
-        .then(data => {
-            // Si el estado es cancelado o no existe (borrado de DB)
-            if (data.estado === 'cancelado' || data.estado === 'no_existe') {
-                // Notificación VISIBLE para el conductor
-                alert("🚨 ¡ATENCIÓN! EL CLIENTE CANCELÓ EL VIAJE.");
-                // Limpieza total y redirección
-                window.location.replace("/viajes_disponibles");
-            }
-        });
+        })
+        .catch(() => {});
     {% endif %}
-}, 4000); 
+}, 4000);
 </script>
 {% endblock %}
