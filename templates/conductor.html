@@ -99,7 +99,7 @@
 </style>
 
 <script>
-// --- TU LÓGICA DE ESTADOS (MANTENIDA) ---
+// --- LÓGICA DE ESTADOS ---
 function actualizarEstado(nuevoEstado, viajeId) {
     if (!viajeId || viajeId === "") {
         alert("No hay un ID de viaje válido");
@@ -133,7 +133,7 @@ function actualizarEstado(nuevoEstado, viajeId) {
     });
 }
 
-// --- TU LÓGICA DE MAPA (MANTENIDA) ---
+// --- LÓGICA DE MAPA ---
 {% if viaje %}
 document.addEventListener("DOMContentLoaded", function() {
     const latO = {{ viaje.lat or 0 }};
@@ -179,8 +179,7 @@ document.addEventListener("DOMContentLoaded", function() {
 });
 {% endif %}
 
-// --- TU LÓGICA DE ALERTAS (CORREGIDA Y ACTIVADA) ---
-<script>
+// --- LÓGICA DE ALERTAS Y CANCELACIÓN ---
 let alertaActiva = false;
 
 function iniciarAlerta() {
@@ -191,43 +190,47 @@ function iniciarAlerta() {
         alertaActiva = true;
         if (divAlerta) divAlerta.style.display = "block";
         if (sonido) {
-            sonido.loop = true; // 🔄 Para que siga sonando hasta que lo atiendan
-            sonido.play().catch(e => console.log("Esperando clic para sonar"));
+            sonido.loop = true;
+            sonido.play().catch(e => console.log("Permiso de audio requerido"));
         }
     }
 }
 
 function detenerAlerta() {
     const divAlerta = document.getElementById("alerta-viaje");
-    const sonido = document.getElementById("sonidoNotificacion"); // 👈 Necesitamos llamar al sonido aquí también
+    const sonido = document.getElementById("sonidoNotificacion");
     
     if (alertaActiva) {
         alertaActiva = false;
         if (divAlerta) divAlerta.style.display = "none";
-        
         if (sonido) {
-            sonido.pause();      // 🔇 DETIENE EL SONIDO
-            sonido.currentTime = 0; // REINICIA EL AUDIO
+            sonido.pause();
+            sonido.currentTime = 0;
         }
     }
 }
 
-// 🕵️ VIGILANTE: Revisa cada 5 segundos (más rápido para mayor precisión)
 setInterval(function() {
-    {% if not viaje_activo %}
-    fetch('/api/verificar_viajes')
-    .then(res => res.json())
-    .then(data => {
-        if (data.hay_viajes) {
-            iniciarAlerta();
-        } else {
-            // 🧹 Si ya no hay viajes (porque alguien más lo tomó o se canceló)
-            // quitamos la notificación automáticamente
-            detenerAlerta();
-        }
-    })
-    .catch(err => console.log("Error al verificar"));
+    // 1. Si NO hay viaje activo, busca viajes nuevos
+    {% if not viaje %}
+        fetch('/api/verificar_viajes')
+        .then(res => res.json())
+        .then(data => {
+            if (data.hay_viajes) { iniciarAlerta(); }
+            else { detenerAlerta(); }
+        }).catch(e => console.log("Error buscando viajes"));
+    
+    // 2. Si SI hay viaje activo, revisa si el cliente lo canceló
+    {% else %}
+        fetch('/api_estado_viaje/{{ viaje.id }}')
+        .then(res => res.json())
+        .then(data => {
+            if (data.estado === 'cancelado') {
+                alert("⚠️ El cliente ha cancelado este viaje.");
+                window.location.href = "/viajes_disponibles";
+            }
+        }).catch(e => console.log("Error revisando cancelación"));
     {% endif %}
-}, 5000); 
+}, 5000);
 </script>
 {% endblock %}
