@@ -823,17 +823,16 @@ def add_header(response):
     return response
 from flask import session, jsonify
 @app.route("/api_estado_viaje/<int:viaje_id>")
-@app.route("/api_estado_viaje/<int:viaje_id>")
 def api_estado_viaje(viaje_id):
     conn = get_db()
-    # Traemos estado del viaje y datos del conductor (incluyendo ubicación)
+    # Obtenemos los datos del viaje y del usuario (conductor) vinculado
     viaje = conn.execute("""
         SELECT 
-            v.estado,
-            u.nombre,
-            u.numero_unidad,
-            u.color_vehiculo,
-            u.lat,
+            v.estado, 
+            u.nombre, 
+            u.numero_unidad, 
+            u.color_vehiculo, 
+            u.lat, 
             u.lng
         FROM viajes v
         LEFT JOIN usuarios u ON v.conductor_id = u.id
@@ -841,18 +840,21 @@ def api_estado_viaje(viaje_id):
     """, (viaje_id,)).fetchone()
     conn.close()
 
+    # Si el viaje no existe
     if not viaje:
         session.pop('viaje_id', None)
         return jsonify({"estado": "no_existe"})
 
+    # Limpiar sesión si el viaje ya terminó
     if viaje["estado"] in ["cancelado", "finalizado"]:
         session.pop('viaje_id', None)
 
+    # RESPUESTA LIMPIA: Nombres directos para que tu JS los lea fácil
     return jsonify({
         "estado": viaje["estado"],
-        "conductor": viaje["nombre"] or "Asignando...",
-        "unidad": viaje["numero_unidad"] or "...",
-        "color": viaje["color_vehiculo"] or "...",
+        "nombre": viaje["nombre"] or "Buscando conductor...",
+        "unidad": viaje["numero_unidad"] or "---",
+        "color": viaje["color_vehiculo"] or "---",
         "lat": viaje["lat"],
         "lng": viaje["lng"]
     })
@@ -864,8 +866,8 @@ def conductor_activo(user_id):
         (user_id,)
     ).fetchone()
     conn.close()
-    return user and user["activo"] == 1
-
+    # Retorna True si existe y está marcado como 1
+    return True if (user and user["activo"] == 1) else False
 @app.route("/api/verificar_viajes")
 def api_verificar_viajes():
     user_id = session.get("user_id")

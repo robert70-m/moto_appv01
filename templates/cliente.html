@@ -56,15 +56,13 @@
 <div class="card" style="padding: 5px; height: 400px; margin-bottom: 30px;">
     <div id="map" style="height:100%; border-radius: 12px; z-index: 1;"></div>
 </div>
-
 <script>
 let map = null;
 let marcadorUsuario = null;
 let marcadorDestino = null;
-let marcadorMoto = null;
+let marcadorMoto = null; // marcador para la moto
 let alertaTomadaMostrada = false;
-let alertaFueraMostrada = false;
-let alertaFinalizadoMostrada = false; // 🔥 NUEVO
+let alertaFinalizadoMostrada = false;
 let ejecutando = false;
 
 const iconoCliente = L.icon({ iconUrl: 'https://cdn-icons-png.flaticon.com/512/684/684908.png', iconSize: [35,35], iconAnchor: [17, 35] });
@@ -78,7 +76,6 @@ function ejecutarCancelacion(viajeId) {
 }
 
 document.addEventListener("DOMContentLoaded", function() {
-    console.log("ID VIAJE:", "{{ viaje_id }}");
     if (navigator.geolocation) {
         navigator.geolocation.watchPosition(function(pos) {
             let lat = pos.coords.latitude;
@@ -112,7 +109,6 @@ document.addEventListener("DOMContentLoaded", function() {
         fetch(`/api_estado_viaje/${viajeId}`)
         .then(r => r.json())
         .then(d => {
-
             if (d.estado === "finalizado" && !alertaFinalizadoMostrada) {
                 alertaFinalizadoMostrada = true;
                 alert("🏁 ¡Has llegado a tu destino!");
@@ -120,18 +116,40 @@ document.addEventListener("DOMContentLoaded", function() {
                 return;
             }
 
+            // SI EL VIAJE ES ACEPTADO O ESTÁ EN CURSO
             if (["aceptado", "en_camino", "recogido", "cerca"].includes(d.estado)) {
+                // 1. Mostrar el panel de datos
+                document.getElementById("status_conductor").style.display = "block";
+                document.getElementById("form-viaje").style.display = "none";
+                if(document.getElementById("contenedor-cancelar")) document.getElementById("contenedor-cancelar").style.display = "none";
+
+                // 2. Llenar los datos del conductor (Usando los nombres que te di en el Python)
+                document.getElementById("nombre_en_pantalla").innerText = d.nombre;
+                document.getElementById("unidad_en_pantalla").innerText = d.unidad;
+                document.getElementById("color_en_pantalla").innerText = d.color;
+                document.getElementById("texto_estado").innerText = d.estado.toUpperCase();
+
+                // 3. MOVER LA MOTO EN EL MAPA
+                if (d.lat && d.lng) {
+                    if (marcadorMoto) {
+                        marcadorMoto.setLatLng([d.lat, d.lng]);
+                    } else {
+                        marcadorMoto = L.marker([d.lat, d.lng], {icon: iconoMoto}).addTo(map);
+                    }
+                }
+
                 if (!alertaTomadaMostrada) {
                     alert("✅ ¡Un conductor ha tomado tu viaje!");
                     alertaTomadaMostrada = true;
                 }
             }
-
         })
+        .catch(err => console.error("Error:", err))
         .finally(() => { ejecutando = false; });
     };
 
     setInterval(window.vigilarViaje, 3000);
 });
 </script>
+
 {% endblock %}
