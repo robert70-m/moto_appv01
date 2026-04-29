@@ -822,31 +822,29 @@ def add_header(response):
 
     return response
 from flask import session, jsonify
-
+@app.route("/api_estado_viaje/<int:viaje_id>")
 @app.route("/api_estado_viaje/<int:viaje_id>")
 def api_estado_viaje(viaje_id):
     conn = get_db()
-
+    # Traemos estado del viaje y datos del conductor (incluyendo ubicación)
     viaje = conn.execute("""
         SELECT 
             v.estado,
             u.nombre,
             u.numero_unidad,
-            u.color_vehiculo
+            u.color_vehiculo,
+            u.lat,
+            u.lng
         FROM viajes v
         LEFT JOIN usuarios u ON v.conductor_id = u.id
         WHERE v.id = ?
     """, (viaje_id,)).fetchone()
-
     conn.close()
 
-    # --- CORRECCIÓN AQUÍ ---
     if not viaje:
-        # Si el viaje ya no está en la DB, borramos rastro de la sesión
         session.pop('viaje_id', None)
         return jsonify({"estado": "no_existe"})
 
-    # Si el viaje está cancelado o finalizado, también limpiamos sesión
     if viaje["estado"] in ["cancelado", "finalizado"]:
         session.pop('viaje_id', None)
 
@@ -854,7 +852,9 @@ def api_estado_viaje(viaje_id):
         "estado": viaje["estado"],
         "conductor": viaje["nombre"] or "Asignando...",
         "unidad": viaje["numero_unidad"] or "...",
-        "color": viaje["color_vehiculo"] or "..."
+        "color": viaje["color_vehiculo"] or "...",
+        "lat": viaje["lat"],
+        "lng": viaje["lng"]
     })
 
 def conductor_activo(user_id):
@@ -865,6 +865,7 @@ def conductor_activo(user_id):
     ).fetchone()
     conn.close()
     return user and user["activo"] == 1
+
 @app.route("/api/verificar_viajes")
 def api_verificar_viajes():
     user_id = session.get("user_id")
