@@ -868,6 +868,8 @@ def conductor_activo(user_id):
     conn.close()
     # Retorna True si existe y está marcado como 1
     return True if (user and user["activo"] == 1) else False
+
+# 1. ESTA ES PARA VER SI HAY VIAJES NUEVOS EN LA LISTA
 @app.route("/api/verificar_viajes")
 def api_verificar_viajes():
     user_id = session.get("user_id")
@@ -878,6 +880,22 @@ def api_verificar_viajes():
     viaje = conn.execute("SELECT id FROM viajes WHERE estado='pendiente'").fetchone()
     conn.close()
     return jsonify({"hay_viajes": True if viaje else False})
+
+# 2. ESTA ES PARA VER SI EL VIAJE QUE YA ACEPTE SIGUE VIVO O ME LO CANCELARON
+@app.route("/api_verificar_status_viaje/<int:viaje_id>")
+def api_verificar_status_viaje(viaje_id):
+    conn = get_db()
+    viaje = conn.execute("SELECT estado, conductor_id FROM viajes WHERE id = ?", (viaje_id,)).fetchone()
+    conn.close()
+    
+    if not viaje:
+        return jsonify({"status": "eliminado"})
+    
+    return jsonify({
+        "estado": viaje["estado"],
+        "conductor_id": viaje["conductor_id"]
+    })
+
 
 if __name__ == "__main__":
     app.run(debug=True)
