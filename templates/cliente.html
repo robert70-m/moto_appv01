@@ -78,7 +78,7 @@ function ejecutarCancelacion(viajeId) {
 }
 
 document.addEventListener("DOMContentLoaded", function() {
-
+    console.log("ID VIAJE:", "{{ viaje_id }}");
     if (navigator.geolocation) {
         navigator.geolocation.watchPosition(function(pos) {
             let lat = pos.coords.latitude;
