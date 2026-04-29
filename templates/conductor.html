@@ -68,32 +68,36 @@
 function actualizarEstado(nuevoEstado, viajeId) {
     if (!viajeId || viajeId === "") return;
     
+    // Capturamos el botón que se presionó
     const btn = event.currentTarget;
     const textoOriginal = btn.innerHTML;
     btn.innerHTML = "Actualizando...";
     btn.disabled = true;
 
+    // Cambiamos a r.json() porque el servidor ahora manda JSON
     fetch(`/cambiar_estado_viaje/${viajeId}/${nuevoEstado}`)
-    .then(res => res.text())
-    .then(txt => {
-        if (txt.includes("OK")) {
+    .then(res => res.json()) 
+    .then(data => {
+        // Validamos con el status que configuramos en Python
+        if (data.status === "ok" || data.status === "OK") {
             if (nuevoEstado === "finalizado") {
                 window.location.replace("/viajes_disponibles");
             } else {
-                location.reload();
+                location.reload(); // Recarga para activar el siguiente botón
             }
         } else {
-            alert("Error al actualizar estado");
+            alert("Error: " + (data.message || "No se pudo actualizar"));
             btn.innerHTML = textoOriginal;
             btn.disabled = false;
         }
     })
     .catch(err => {
+        console.error(err);
         alert("Error de conexión con el servidor");
-        location.reload();
+        btn.innerHTML = textoOriginal;
+        btn.disabled = false;
     });
 }
-
 // Inicialización del Mapa del Conductor
 {% if viaje %}
 let map;
@@ -161,15 +165,20 @@ setInterval(function() {
     {% if viaje %}
         // Revisar si el viaje actual sigue activo
         fetch('/api_estado_viaje/{{ viaje.id }}')
-        .then(res => res.json())
+        .then(res => {
+            if (!res.ok) throw new Error("Error de red");
+            return res.json();
+        })
         .then(data => {
+            // Si el estado ya no es de los activos, el cliente canceló
             if (data.estado === 'cancelado' || data.estado === 'no_existe') {
                 alert("🚨 ¡ATENCIÓN! EL CLIENTE CANCELÓ EL VIAJE.");
                 window.location.replace("/viajes_disponibles");
             }
-        });
+        })
+        .catch(e => console.log("Reintentando conexión..."));
     {% else %}
-        // Si está libre, buscar nuevos pedidos
+        // Lógica para buscar nuevos viajes cuando el chofer está libre
         fetch('/api/verificar_viajes')
         .then(res => res.json())
         .then(data => {

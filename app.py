@@ -440,45 +440,51 @@ def viajes_disponibles():
         viajes=[dict(v) for v in viajes_rows],
         viaje_activo=None
     )
+from flask import jsonify # Asegúrate de tener esto importado arriba
+
 @app.route("/aceptar_viaje/<int:id>")
 def aceptar_viaje(id):
     if not rol("conductor"):
-        return redirect(url_for("login"))
+        return jsonify({"status": "error", "message": "No autorizado"}), 401
 
     user_id = session.get("user_id")
     if not user_id:
-        return redirect(url_for("login"))
+        return jsonify({"status": "error", "message": "Sesión expirada"}), 401
 
     conn = get_db()
 
-    # 🔒 1. Verificar si ya tiene un viaje activo
+    # 1. Verificar si ya tiene un viaje activo
     activo = conn.execute("""
-        SELECT id FROM viajes
-        WHERE conductor_id=?
-        AND estado IN ('aceptado','en_camino','recogido')
+        SELECT id FROM viajes 
+        WHERE conductor_id=? 
+        AND estado IN ('aceptado','en_camino','recogido','cerca')
         LIMIT 1
     """, (user_id,)).fetchone()
 
     if activo:
         conn.close()
-        return "Ya tienes un viaje en curso. Finalízalo primero.", 400
+        # DEVOLVER JSON, NO TEXTO
+        return jsonify({"status": "error", "message": "Ya tienes un viaje en curso"}), 400
 
-    # 🔒 2. Intentar aceptar el viaje
+    # 2. Intentar aceptar el viaje (Solo si sigue pendiente)
     cursor = conn.execute("""
-        UPDATE viajes
-        SET conductor_id=?, estado='aceptado'
+        UPDATE viajes 
+        SET conductor_id=?, estado='aceptado' 
         WHERE id=? AND estado='pendiente'
     """, (user_id, id))
-
+    
     conn.commit()
 
     if cursor.rowcount == 0:
         conn.close()
-        return "El viaje ya fue tomado o no existe", 400
+        # DEVOLVER JSON
+        return jsonify({"status": "error", "message": "El viaje ya fue tomado por otro"}), 400
 
     conn.close()
 
-    return redirect(url_for("conductor"))
+    # IMPORTANTE: No hagas redirect aquí. 
+    # El JavaScript se encargará de refrescar la página al recibir el OK.
+    return jsonify({"status": "ok", "message": "Viaje aceptado correctamente"})
 @app.route("/cambiar_estado_viaje/<int:id>/<nuevo_estado>")
 def cambiar_estado_viaje(id, nuevo_estado):
     if not rol("conductor"):
