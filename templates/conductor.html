@@ -68,22 +68,21 @@
 function actualizarEstado(nuevoEstado, viajeId) {
     if (!viajeId || viajeId === "") return;
     
-    // Capturamos el botón que se presionó
     const btn = event.currentTarget;
     const textoOriginal = btn.innerHTML;
     btn.innerHTML = "Actualizando...";
     btn.disabled = true;
 
-    // Cambiamos a r.json() porque el servidor ahora manda JSON
-    fetch(`/cambiar_estado_viaje/${viajeId}/${nuevoEstado}`)
+    fetch(`/cambiar_estado_viaje/${viajeId}/${nuevoEstado}`, {
+        method: "POST"
+    })
     .then(res => res.json()) 
     .then(data => {
-        // Validamos con el status que configuramos en Python
         if (data.status === "ok" || data.status === "OK") {
             if (nuevoEstado === "finalizado") {
                 window.location.replace("/viajes_disponibles");
             } else {
-                location.reload(); // Recarga para activar el siguiente botón
+                location.reload();
             }
         } else {
             alert("Error: " + (data.message || "No se pudo actualizar"));
@@ -98,6 +97,9 @@ function actualizarEstado(nuevoEstado, viajeId) {
         btn.disabled = false;
     });
 }
+
+
+
 // Inicialización del Mapa del Conductor
 {% if viaje %}
 let map;
