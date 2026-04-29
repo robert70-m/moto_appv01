@@ -461,6 +461,18 @@ def aceptar_viaje(id):
 
     conn = get_db()
 
+    # --- PROTECCIÓN EXTRA: Verificar si el cliente canceló antes de intentar el UPDATE ---
+    viaje_actual = conn.execute("SELECT estado FROM viajes WHERE id = ?", (id,)).fetchone()
+    
+    if not viaje_actual:
+        conn.close()
+        return jsonify({"status": "error", "message": "El viaje ya no existe"}), 400
+    
+    if viaje_actual["estado"] == "cancelado":
+        conn.close()
+        return jsonify({"status": "error", "message": "El cliente canceló este pedido recientemente"}), 400
+    # -------------------------------------------------------------------
+
     # 1. Verificar si ya tiene un viaje activo
     activo = conn.execute("""
         SELECT id FROM viajes 
@@ -473,7 +485,7 @@ def aceptar_viaje(id):
         conn.close()
         return jsonify({"status": "error", "message": "Ya tienes un viaje en curso"}), 400
 
-    # 2. Intentar aceptar el viaje
+    # 2. Intentar aceptar el viaje (Solo si sigue pendiente)
     cursor = conn.execute("""
         UPDATE viajes 
         SET conductor_id=?, estado='aceptado' 
@@ -484,7 +496,8 @@ def aceptar_viaje(id):
 
     if cursor.rowcount == 0:
         conn.close()
-        return jsonify({"status": "error", "message": "El viaje ya fue tomado por otro"}), 400
+        # Si llegamos aquí y no es cancelación, es porque otro conductor ganó
+        return jsonify({"status": "error", "message": "El viaje ya fue tomado por otro conductor"}), 400
 
     conn.close()
 
@@ -492,7 +505,6 @@ def aceptar_viaje(id):
         "status": "ok",
         "message": "Viaje aceptado"
     })
-
 @app.route("/cambiar_estado_viaje/<int:id>/<nuevo_estado>", methods=["POST"])
 def cambiar_estado_viaje(id, nuevo_estado):
     # 1. Verificación de sesión y rol
