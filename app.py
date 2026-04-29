@@ -262,16 +262,25 @@ def cliente():
     if not rol("cliente"):
         return redirect(url_for("login"))
 
+    user_id = session.get("user_id")
+    if not user_id:
+        return redirect(url_for("login"))
+
     conn = get_db()
-    # 🔍 CAMBIO AQUÍ: Ahora solo busca viajes activos (que no estén finalizados ni cancelados)
     viaje = conn.execute("""
-        SELECT * FROM viajes
-        WHERE cliente_id=? AND estado NOT IN ('finalizado', 'cancelado')
-        ORDER BY id DESC LIMIT 1
-    """, (session["user_id"],)).fetchone()
+        SELECT id FROM viajes
+        WHERE cliente_id=? 
+        AND estado NOT IN ('finalizado','cancelado')
+        ORDER BY id DESC
+        LIMIT 1
+    """, (user_id,)).fetchone()
     conn.close()
 
-    return render_template("cliente.html", viaje_id=viaje["id"] if viaje else None)
+    viaje_id = viaje["id"] if viaje else None
+
+    return render_template("cliente.html", viaje_id=viaje_id)
+
+
 @app.route("/pedir_viaje", methods=["POST"])
 def pedir_viaje():
     if not rol("cliente"):
