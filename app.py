@@ -441,8 +441,7 @@ def viajes_disponibles():
         viaje_activo=None
     )
 from flask import jsonify # Asegúrate de tener esto importado arriba
-
-@app.route("/aceptar_viaje/<int:id>")
+@app.route("/aceptar_viaje/<int:id>", methods=["POST"])
 def aceptar_viaje(id):
     if not rol("conductor"):
         return jsonify({"status": "error", "message": "No autorizado"}), 401
@@ -463,10 +462,9 @@ def aceptar_viaje(id):
 
     if activo:
         conn.close()
-        # DEVOLVER JSON, NO TEXTO
         return jsonify({"status": "error", "message": "Ya tienes un viaje en curso"}), 400
 
-    # 2. Intentar aceptar el viaje (Solo si sigue pendiente)
+    # 2. Intentar aceptar el viaje
     cursor = conn.execute("""
         UPDATE viajes 
         SET conductor_id=?, estado='aceptado' 
@@ -477,14 +475,15 @@ def aceptar_viaje(id):
 
     if cursor.rowcount == 0:
         conn.close()
-        # DEVOLVER JSON
         return jsonify({"status": "error", "message": "El viaje ya fue tomado por otro"}), 400
 
     conn.close()
 
-    # IMPORTANTE: No hagas redirect aquí. 
-    # El JavaScript se encargará de refrescar la página al recibir el OK.
-    return jsonify({"status": "ok", "message": "Viaje aceptado correctamente"})
+    return jsonify({
+        "status": "ok",
+        "message": "Viaje aceptado"
+    })
+
 @app.route("/cambiar_estado_viaje/<int:id>/<nuevo_estado>", methods=["POST"])
 def cambiar_estado_viaje(id, nuevo_estado):
     # 1. Verificación de sesión y rol

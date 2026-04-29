@@ -127,7 +127,7 @@ function aceptarViaje(viajeId) {
             window.location.href = "/conductor";
         } else {
             // AQUÍ es donde el conductor recibe el aviso
-            alert("⚠️ " + data.mensaje); // El mensaje dirá: "Este viaje ya fue tomado"
+            alert("⚠️ " + (data.mensaje || data.message || "No disponible"));
             window.location.reload();
         }
     })
