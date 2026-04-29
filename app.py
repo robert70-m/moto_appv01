@@ -485,28 +485,31 @@ def aceptar_viaje(id):
     # IMPORTANTE: No hagas redirect aquí. 
     # El JavaScript se encargará de refrescar la página al recibir el OK.
     return jsonify({"status": "ok", "message": "Viaje aceptado correctamente"})
-@app.route("/cambiar_estado_viaje/<int:id>/<nuevo_estado>")
+@app.route("/cambiar_estado_viaje/<int:id>/<nuevo_estado>", methods=["POST"])
 def cambiar_estado_viaje(id, nuevo_estado):
+    # 1. Verificación de sesión y rol
     if not rol("conductor"):
-        return jsonify({"status": "error"}), 403
+        return jsonify({"status": "error", "message": "No autorizado"}), 403
 
     user_id = session.get("user_id")
     if not user_id:
-        return jsonify({"status": "error"}), 403
+        return jsonify({"status": "error", "message": "Sesión expirada"}), 403
 
     conn = get_db()
-
-    # validar que el viaje es del conductor
+    
+    # 2. Validar que el viaje existe y pertenece al conductor
     viaje = conn.execute("""
-        SELECT id, estado FROM viajes
+        SELECT estado FROM viajes 
         WHERE id=? AND conductor_id=?
     """, (id, user_id)).fetchone()
 
     if not viaje:
         conn.close()
-        return jsonify({"status": "error"}), 403
+        return jsonify({"status": "error", "message": "Viaje no encontrado"}), 404
 
-    # flujo correcto de estados
+    # 3. Lógica de transiciones
+    # El estado 'pendiente' se maneja en 'aceptar_viaje_ajax'
+    # Esta ruta maneja el progreso posterior
     transiciones = {
         "aceptado": "en_camino",
         "en_camino": "recogido",
@@ -515,16 +518,24 @@ def cambiar_estado_viaje(id, nuevo_estado):
 
     estado_actual = viaje["estado"]
 
+    # Validar si el cambio solicitado es el siguiente paso lógico
     if estado_actual not in transiciones or transiciones[estado_actual] != nuevo_estado:
         conn.close()
-        return jsonify({"status": "error"}), 400
+        return jsonify({
+            "status": "error", 
+            "message": f"Transición no permitida de {estado_actual} a {nuevo_estado}"
+        }), 400
 
-    conn.execute("UPDATE viajes SET estado=? WHERE id=?", (nuevo_estado, id))
-    conn.commit()
-    conn.close()
+    # 4. Actualizar
+    try:
+        conn.execute("UPDATE viajes SET estado=? WHERE id=?", (nuevo_estado, id))
+        conn.commit()
+    except Exception as e:
+        return jsonify({"status": "error", "message": str(e)}), 500
+    finally:
+        conn.close()
 
-    return jsonify({"status": "ok"})
-
+    return jsonify({"status": "ok", "nuevo_estado": nuevo_estado})
 
 # ---------------------- API ----------------------
 @app.route("/api_viajes")
