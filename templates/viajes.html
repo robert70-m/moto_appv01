@@ -119,22 +119,27 @@ document.addEventListener("DOMContentLoaded", function() {
     {% endif %}
 });
 function aceptarViaje(viajeId) {
-    fetch(`/aceptar_viaje/${viajeId}`)
-    .then(res => res.json())
+    fetch(`/aceptar_viaje/${viajeId}`, {
+        method: "POST"
+    })
+    .then(res => {
+        if (!res.ok) throw new Error("Error HTTP");
+        return res.json();
+    })
     .then(data => {
-        // El servidor debe responder con un status
-        if (data.status === "OK") {
+        if (data.status === "ok" || data.status === "OK") {
             window.location.href = "/conductor";
         } else {
-            // AQUÍ es donde el conductor recibe el aviso
-            alert("⚠️ " + (data.mensaje || data.message || "No disponible"));
+            alert("⚠️ " + (data.mensaje || data.message || "No se pudo aceptar"));
             window.location.reload();
         }
     })
     .catch(err => {
+        console.error(err);
         alert("Error al conectar con el servidor.");
     });
 }
+
 // 3. FUNCIÓN PARA ACEPTAR VIAJE Y MOSTRAR ALERTA SI YA NO ESTÁ
 
 // 4. LÓGICA DE ALERTA DE NUEVOS VIAJES
