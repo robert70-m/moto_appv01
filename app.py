@@ -452,25 +452,41 @@ def viajes_disponibles():
 from flask import jsonify # Asegúrate de tener esto importado arriba
 @app.route("/aceptar_viaje/<int:id>", methods=["POST"])
 def aceptar_viaje(id):
-    if not rol("conductor"):
-        return jsonify({"status": "error", "message": "No autorizado"}), 401
+    try:
+        if not rol("conductor"):
+            return jsonify({"status": "error", "message": "No autorizado"}), 401
 
-    user_id = session.get("user_id")
-    if not user_id:
-        return jsonify({"status": "error", "message": "Sesión expirada"}), 401
+        user_id = session.get("user_id")
+        conn = get_db()
 
-    conn = get_db()
+        # Verificar si el viaje existe
+        viaje = conn.execute("SELECT estado FROM viajes WHERE id = ?", (id,)).fetchone()
+        
+        if not viaje:
+            conn.close()
+            return jsonify({"status": "error", "message": "El viaje ya no existe"}), 200 # Usamos 200 para que el JS no brinque al catch
 
-    # --- PROTECCIÓN EXTRA: Verificar si el cliente canceló antes de intentar el UPDATE ---
-    viaje_actual = conn.execute("SELECT estado FROM viajes WHERE id = ?", (id,)).fetchone()
-    
-    if not viaje_actual:
+        if viaje["estado"] == "cancelado":
+            conn.close()
+            return jsonify({"status": "error", "message": "El cliente canceló el viaje"}), 200
+
+        # Intentar el update
+        cursor = conn.execute("""
+            UPDATE viajes 
+            SET conductor_id=?, estado='aceptado' 
+            WHERE id=? AND estado='pendiente'
+        """, (user_id, id))
+        conn.commit()
         conn.close()
-        return jsonify({"status": "error", "message": "El viaje ya no existe"}), 400
-    
-    if viaje_actual["estado"] == "cancelado":
-        conn.close()
-        return jsonify({"status": "error", "message": "El cliente canceló este pedido recientemente"}), 400
+
+        if cursor.rowcount == 0:
+            return jsonify({"status": "error", "message": "Ya lo tomó otro conductor"}), 200
+
+        return jsonify({"status": "ok", "message": "Viaje aceptado"})
+    except Exception as e:
+        print(f"Error: {e}")
+        return jsonify({"status": "error", "message": "Error interno del servidor"}), 200
+
     # -------------------------------------------------------------------
 
     # 1. Verificar si ya tiene un viaje activo

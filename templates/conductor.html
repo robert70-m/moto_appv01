@@ -68,10 +68,9 @@
 function actualizarEstado(nuevoEstado, viajeId) {
     if (!viajeId || viajeId === "") return;
     
-    const btn = event.currentTarget;
-    const textoOriginal = btn.innerHTML;
-    btn.innerHTML = "Actualizando...";
-    btn.disabled = true;
+    // Bloqueamos TODOS los botones para evitar doble clic accidental
+    const botones = document.querySelectorAll('.btn-estado');
+    botones.forEach(b => b.disabled = true);
 
     fetch(`/cambiar_estado_viaje/${viajeId}/${nuevoEstado}`, {
         method: "POST"
@@ -86,18 +85,14 @@ function actualizarEstado(nuevoEstado, viajeId) {
             }
         } else {
             alert("Error: " + (data.message || "No se pudo actualizar"));
-            btn.innerHTML = textoOriginal;
-            btn.disabled = false;
+            location.reload(); // Recargamos para refrescar estados reales
         }
     })
     .catch(err => {
-        console.error(err);
-        alert("Error de conexión con el servidor");
-        btn.innerHTML = textoOriginal;
-        btn.disabled = false;
+        alert("Error de conexión. Verifica tu internet.");
+        location.reload();
     });
 }
-
 
 
 // Inicialización del Mapa del Conductor
@@ -163,22 +158,25 @@ function detenerAlerta() {
 }
 
 // Vigilante de cancelaciones y nuevos viajes
+// Vigilante de cancelaciones y nuevos viajes
 setInterval(function() {
     {% if viaje %}
-        // Revisar si el viaje actual sigue activo
-        fetch('/api_estado_viaje/{{ viaje.id }}')
-        .then(res => {
-            if (!res.ok) throw new Error("Error de red");
-            return res.json();
-        })
+        // Usamos la ruta ligera que creamos en el servidor para mayor velocidad
+        fetch('/api_verificar_status_viaje/{{ viaje.id }}')
+        .then(res => res.json())
         .then(data => {
-            // Si el estado ya no es de los activos, el cliente canceló
-            if (data.estado === 'cancelado' || data.estado === 'no_existe') {
-                alert("🚨 ¡ATENCIÓN! EL CLIENTE CANCELÓ EL VIAJE.");
+            // Si el estado cambió a cancelado o ya no existe en DB
+            if (data.estado === 'cancelado' || data.status === 'eliminado') {
+                alert("🚨 ¡ATENCIÓN! EL CLIENTE HA CANCELADO EL VIAJE.");
+                window.location.replace("/viajes_disponibles");
+            }
+            // Si por error de sistema otro conductor lo tomó (prevención doble)
+            else if (data.conductor_id && data.conductor_id != "{{ session['user_id'] }}") {
+                alert("🚫 Este viaje ya no te pertenece.");
                 window.location.replace("/viajes_disponibles");
             }
         })
-        .catch(e => console.log("Reintentando conexión..."));
+        .catch(e => console.log("Reconectando radar..."));
     {% else %}
         // Lógica para buscar nuevos viajes cuando el chofer está libre
         fetch('/api/verificar_viajes')
@@ -189,6 +187,6 @@ setInterval(function() {
         })
         .catch(() => {});
     {% endif %}
-}, 4000);
+}, 1500); // 1.5 segundos es el punto dulce entre rapidez y no saturar el server
 </script>
 {% endblock %}
